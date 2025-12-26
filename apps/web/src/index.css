@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Inter", "Inter Fallback", ui-sans-serif, system-ui, -apple-system;
+}
+
+/* Modern Dark Theme with Teal Accent */
+@layer base {
+  :root {
+    --background: 8 12% 6%;
+    --foreground: 0 0% 96%;
+    --primary: 174 92% 48%;
+    --secondary: 0 0% 20%;
+    --border: 0 0% 18%;
+    --muted: 0 0% 50%;
+    --radius: 0.5rem;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Utility Classes */
+@layer components {
+  .card-base {
+    @apply rounded-lg border border-border bg-secondary shadow-lg;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-primary px-4 py-2.5 font-medium text-white transition-all active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply rounded-lg border border-border bg-secondary px-4 py-2.5 font-medium text-foreground transition-all;
+  }
+
+  .btn-secondary:hover {
+    background-color: hsl(0, 0%, 26%);
+  }
+
+  .input-base {
+    @apply w-full rounded-lg border border-border bg-secondary px-3 py-2 text-foreground placeholder-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30;
+  }
+
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}

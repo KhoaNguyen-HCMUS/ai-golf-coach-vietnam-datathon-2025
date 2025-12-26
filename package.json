@@ -1,0 +1,16 @@
+{
+  "name": "ai-golf-coach-vietnam-datathon-2025",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "fe": "pnpm --filter=fe",
+    "be": "pnpm --filter=be",
+    "dev": "pnpm -r --parallel dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.26.2"
+}
