@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # --- CẤU HÌNH ---
 ROOT = Path(__file__).resolve().parents[3]  # Repo root
 INPUT_FOLDERS = {
+    ROOT / 'data' / 'golfdb' / 'videos_hd': ROOT / 'data' / 'ready_for_mediapipe' / 'golfdb',
     ROOT / 'data' / 'TDTU-Golf-Pose-v1' / 'videos': ROOT / 'data' / 'ready_for_mediapipe' / 'TDTU'
 }
 YOLO_MODEL = ROOT / 'apps' / 'ml' / 'src' / 'yolov8n.pt'  # Model nano siêu nhanh
