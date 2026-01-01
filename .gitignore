@@ -29,3 +29,6 @@ next-env.d.ts
 
 # datasets
 data
+
+# model weights
+*.pt
