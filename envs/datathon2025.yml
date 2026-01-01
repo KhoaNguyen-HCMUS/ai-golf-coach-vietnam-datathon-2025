@@ -34,6 +34,9 @@ dependencies:
   - seaborn=0.13.0
   - plotly=5.17.0
 
+  # Vision / video processing
+  - pillow
+
   # Video tools for yt-dlp
   - ffmpeg
   # Optional for MATLAB v7.3 files
@@ -47,3 +50,7 @@ dependencies:
       - tqdm==4.65.0
       - jupyter-black
       - yt-dlp
+      - ultralytics==8.3.243
+      - torch==2.9.1
+      - torchvision==0.24.1
+      - opencv-python==4.8.1.78
