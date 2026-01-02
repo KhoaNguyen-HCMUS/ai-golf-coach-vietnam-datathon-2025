@@ -11,7 +11,7 @@ from rulebased_detector import GolfNpyDetector
 # ---------------------------------------------------------------------------
 # Configuration (edit these paths directly, no CLI args required)
 # ---------------------------------------------------------------------------
-USER_SKELETON_PATH = "data/TDTU_skeletons_npy/9.npy"
+USER_SKELETON_PATH = "./data/TDTU_skeletons_npy/3.npy"
 OUTPUT_JSON_PATH = "outputs/24_eval_layers34.json"
 
 # Reference templates for different camera views (edit paths to match your dataset)
@@ -128,7 +128,9 @@ def enforce_phase_order(phases: Dict[str, int], total_frames: int) -> Dict[str, 
     return ordered
 
 
-def torso_normalize(sequence: np.ndarray, address_idx: int, layout: SkeletonLayout) -> Tuple[np.ndarray, float]:
+def torso_normalize(
+    sequence: np.ndarray, address_idx: int, layout: SkeletonLayout
+) -> Tuple[np.ndarray, float]:
     seq = sequence.copy()
     total_frames = len(seq)
     address_idx = int(np.clip(address_idx, 0, total_frames - 1))
@@ -173,7 +175,9 @@ def resample_segment(segment: np.ndarray, target_length: int) -> np.ndarray:
     return resampled.reshape(target_length, segment.shape[1], segment.shape[2])
 
 
-def build_phase_segments(sequence: np.ndarray, phases: Dict[str, int]) -> Dict[str, np.ndarray]:
+def build_phase_segments(
+    sequence: np.ndarray, phases: Dict[str, int]
+) -> Dict[str, np.ndarray]:
     addr = phases["Address"]
     top = phases["Top"]
     impact = phases["Impact"]
@@ -222,7 +226,9 @@ def dtw_distance(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
     return float(cost[n, m] / (n + m))
 
 
-def compute_quantitative_scores(user: PreprocessResult, reference: PreprocessResult) -> Dict[str, object]:
+def compute_quantitative_scores(
+    user: PreprocessResult, reference: PreprocessResult
+) -> Dict[str, object]:
     layout = user.layout
     upper_joints = layout.require(
         "left_shoulder",
@@ -246,9 +252,17 @@ def compute_quantitative_scores(user: PreprocessResult, reference: PreprocessRes
     for phase_name, weight in PHASE_WEIGHTS.items():
         user_seg = user.segments[phase_name]
         ref_seg = reference.segments[phase_name]
-        upper_err = dtw_distance(flatten_joints(user_seg, upper_joints), flatten_joints(ref_seg, upper_joints))
-        lower_err = dtw_distance(flatten_joints(user_seg, lower_joints), flatten_joints(ref_seg, lower_joints))
-        phase_error = BODY_WEIGHTS["upper"] * upper_err + BODY_WEIGHTS["lower"] * lower_err
+        upper_err = dtw_distance(
+            flatten_joints(user_seg, upper_joints),
+            flatten_joints(ref_seg, upper_joints),
+        )
+        lower_err = dtw_distance(
+            flatten_joints(user_seg, lower_joints),
+            flatten_joints(ref_seg, lower_joints),
+        )
+        phase_error = (
+            BODY_WEIGHTS["upper"] * upper_err + BODY_WEIGHTS["lower"] * lower_err
+        )
         total_error += phase_error * weight
         per_phase[phase_name] = {
             "upper_error": float(upper_err),
@@ -280,7 +294,9 @@ def clamp_idx(idx: int, total: int) -> int:
     return int(max(0, min(idx, total - 1)))
 
 
-def evaluate_geometric_rules(normalized: np.ndarray, phases: Dict[str, int], layout: SkeletonLayout) -> List[Dict[str, object]]:
+def evaluate_geometric_rules(
+    normalized: np.ndarray, phases: Dict[str, int], layout: SkeletonLayout
+) -> List[Dict[str, object]]:
     errors: List[Dict[str, object]] = []
     total = len(normalized)
     idx_addr = clamp_idx(phases["Address"], total)
@@ -289,7 +305,11 @@ def evaluate_geometric_rules(normalized: np.ndarray, phases: Dict[str, int], lay
 
     # Rule 1: Chicken Wing at Top (left elbow angle)
     ls, le, lw = layout.require("left_shoulder", "left_elbow", "left_wrist")
-    angle_elbow = joint_angle(normalized[idx_top, ls, :2], normalized[idx_top, le, :2], normalized[idx_top, lw, :2])
+    angle_elbow = joint_angle(
+        normalized[idx_top, ls, :2],
+        normalized[idx_top, le, :2],
+        normalized[idx_top, lw, :2],
+    )
     if angle_elbow is not None and angle_elbow < 140.0:
         severity = "high" if angle_elbow < 125.0 else "medium"
         errors.append(
@@ -303,7 +323,9 @@ def evaluate_geometric_rules(normalized: np.ndarray, phases: Dict[str, int], lay
 
     # Rule 2: Head bobbing at Top (Y displacement vs Address)
     head_idx = layout.idx("head")
-    head_disp = abs(float(normalized[idx_top, head_idx, 1] - normalized[idx_addr, head_idx, 1]))
+    head_disp = abs(
+        float(normalized[idx_top, head_idx, 1] - normalized[idx_addr, head_idx, 1])
+    )
     if head_disp > 0.15:
         if head_disp > 0.25:
             severity = "high"
@@ -322,7 +344,11 @@ def evaluate_geometric_rules(normalized: np.ndarray, phases: Dict[str, int], lay
 
     # Rule 3: Lead leg stability at Impact (left knee angle)
     lh, lk, la = layout.require("left_hip", "left_knee", "left_ankle")
-    knee_angle = joint_angle(normalized[idx_imp, lh, :2], normalized[idx_imp, lk, :2], normalized[idx_imp, la, :2])
+    knee_angle = joint_angle(
+        normalized[idx_imp, lh, :2],
+        normalized[idx_imp, lk, :2],
+        normalized[idx_imp, la, :2],
+    )
     if knee_angle is not None and knee_angle < 150.0:
         severity = "high" if knee_angle < 130.0 else "medium"
         errors.append(
@@ -337,7 +363,9 @@ def evaluate_geometric_rules(normalized: np.ndarray, phases: Dict[str, int], lay
     return errors
 
 
-def apply_penalties(base_score: float, errors: List[Dict[str, object]]) -> Tuple[float, float]:
+def apply_penalties(
+    base_score: float, errors: List[Dict[str, object]]
+) -> Tuple[float, float]:
     total_penalty = 0.0
     for err in errors:
         sev = err["severity"]
@@ -387,7 +415,9 @@ def evaluate_view_pipeline(
         )
 
     quantitative = compute_quantitative_scores(user, reference)
-    final_score, total_penalty = apply_penalties(quantitative["base_score"], qualitative_errors)
+    final_score, total_penalty = apply_penalties(
+        quantitative["base_score"], qualitative_errors
+    )
 
     return {
         "view": view_name,
@@ -413,7 +443,9 @@ def evaluate_user_skeleton(
     view_results: List[Dict[str, object]] = []
     for view_name, ref_path in VIEW_REFERENCE_MAP.items():
         try:
-            result = evaluate_view_pipeline(view_name, ref_path, local_detector, user, qualitative)
+            result = evaluate_view_pipeline(
+                view_name, ref_path, local_detector, user, qualitative
+            )
             view_results.append(result)
         except FileNotFoundError as exc:
             print(f"[Skip {view_name}] Missing reference skeleton: {exc}")
@@ -421,7 +453,9 @@ def evaluate_user_skeleton(
             print(f"[Skip {view_name}] {exc}")
 
     if not view_results:
-        raise RuntimeError("No valid view evaluations completed. Check reference paths and keypoint layouts.")
+        raise RuntimeError(
+            "No valid view evaluations completed. Check reference paths and keypoint layouts."
+        )
 
     best_result = max(view_results, key=lambda item: item["fusion"]["final_score"])
 
@@ -476,7 +510,9 @@ def main() -> None:
     print("-- Qualitative rules --")
     if qualitative:
         for err in qualitative:
-            print(f"  {err['code']} | phase={err['phase']} | sev={err['severity']} | metric={err['metric']}")
+            print(
+                f"  {err['code']} | phase={err['phase']} | sev={err['severity']} | metric={err['metric']}"
+            )
     else:
         print("  No qualitative violations")
 
