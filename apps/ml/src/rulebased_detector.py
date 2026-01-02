@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import glob
 from scipy.signal import savgol_filter
-from visualize_phases import visualize_video
+from visualize_phases import visualize_video    
 
 class GolfNpyDetector:
     def __init__(self):

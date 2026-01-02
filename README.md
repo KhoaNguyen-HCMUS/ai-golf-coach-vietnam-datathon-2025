@@ -89,6 +89,10 @@ python apps/ml/src/score_mapper_trainer.py
 
 > Lưu ý: trước khi chạy từng script hãy cập nhật đường dẫn cấu hình trong file tương ứng (thư mục video, skeleton, CSV, JSON đầu ra, model YOLO, v.v.) và đảm bảo môi trường `datathon2025` đã được kích hoạt đầy đủ dependency (OpenCV, Ultralytics, NumPy, Pandas, SciPy,...).
 
+### Notebooks liên quan
+
+- [apps/ml/notebooks/eda_dataset_comparison.ipynb](apps/ml/notebooks/eda_dataset_comparison.ipynb) thực hiện EDA so sánh dữ liệu TDTU và GolfDB: thống kê phân bố góc quay, môi trường, kỹ năng, phân tích variance skeleton để chứng minh GolfDB là bộ tham chiếu chuẩn.
+
 ## IoT edge node (Device/)
 
 - [Device/src/main.cpp](Device/src/main.cpp#L1-L47) là entrypoint chạy trên ESP32: sau khi nhận lệnh `START` qua MQTT thì đọc IMU liên tục, phát hiện va chạm và gửi kết quả về topic phản hồi.
