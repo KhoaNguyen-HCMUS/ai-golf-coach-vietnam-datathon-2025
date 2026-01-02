@@ -1,26 +1,24 @@
-# How to run project
+# Project Setup
 
-## Structure folder
+## Folder structure
 
-This project is organized into two main folders:
+The repo is split into two main roots:
 
-- **`envs/`**: Contains environment for machine learning.
-- **`apps/`**: Contains frontend, backend and machine learning app.
+- **`envs/`** – Conda environment definitions (e.g., `datathon2025.yml`).
+- **`apps/`** – Frontend, backend, and machine-learning source trees.
 
 ## Requirements
 
 - Node 20+, pnpm 10+
 - Conda 23+
 
-## Install dependencies
+## Install JavaScript dependencies
 
 ```bash
 pnpm install
 ```
 
-## Activate conda environment
-
-Create and activate the conda environment from the yml file:
+## Activate the Conda environment
 
 ```bash
 conda env create -f envs/datathon2025.yml
@@ -29,19 +27,13 @@ conda activate datathon2025
 
 ## Run project
 
-### Run all
+### Full stack
 
 ```bash
 pnpm dev
 ```
 
-### Only server
-
-```bash
-pnpm be dev
-```
-
-### Only web
+### Frontend only
 
 ```bash
 pnpm fe dev
@@ -49,65 +41,65 @@ pnpm fe dev
 
 ## Outcome
 
-Web: https://localhost:4000
-Server: https://localhost:5000
+- Web: https://localhost:4000
+- Server: https://localhost:5000
 
 ## ML pipeline scripts (apps/ml/src)
 
-- [adjust_event_frames.py](apps/ml/src/adjust_event_frames.py): đọc GolfDB CSV, lấy FPS từng video và cộng thêm `offset_seconds * fps` vào toàn bộ `events` để đồng bộ mốc pha sau khi cắt/ghép video.
-- [evaluate.py](apps/ml/src/evaluate.py): chuẩn hóa skeleton người dùng, so khớp DTW với mẫu tham chiếu theo từng góc quay, áp luật hình học (chicken wing, head bobbing, soft lead leg), rồi xuất báo cáo JSON gồm điểm và feedback.
-- [extract_skelectons.py](apps/ml/src/extract_skelectons.py): chạy YOLOv8 Pose trên video thô, chọn người có `confidence` cao nhất mỗi frame và lưu toàn bộ keypoint thành `.npy` để dùng cho các bước tiếp theo.
-- [organize_videos.py](apps/ml/src/organize_videos.py): duyệt cấu trúc thư mục TDTU gốc, copy từng `.mov` thành `id.mp4` chuẩn hóa và đồng thời xuất CSV metadata (`place/band/view`).
-- [prepare_videos.py](apps/ml/src/prepare_videos.py): chuẩn hóa toàn bộ video GolfDB và TDTU về chiều cao 720p, áp CLAHE tùy mức sáng để giảm nhiễu ánh sáng; đầu ra dùng chung cho mọi bước trích xuất/đánh giá (không còn đưa sang MediaPipe).
-- [rulebased_detector.py](apps/ml/src/rulebased_detector.py): dùng tín hiệu cổ tay từ skeleton `.npy` để tự suy luận các pha Address/Top/Impact/Finish, đồng thời hỗ trợ xuất video debug với marker sự kiện.
-- [score_mapper_trainer.py](apps/ml/src/score_mapper_trainer.py): gom điểm mô hình vs band thật, fit hàm tuyến tính + warp hai phía để hiệu chỉnh thang điểm 0-10 và báo cáo chính xác theo band.
+- [adjust_event_frames.py](apps/ml/src/adjust_event_frames.py): reads GolfDB CSV metadata, queries each video’s FPS, and shifts all `events` by `offset_seconds * fps` to keep phase timestamps aligned after trimming.
+- [evaluate.py](apps/ml/src/evaluate.py): normalizes the user skeleton, computes DTW distances against reference templates for each camera view, applies rule-based penalties (chicken wing, head bobbing, soft lead leg), and exports a JSON report with scores plus feedback.
+- [extract_skelectons.py](apps/ml/src/extract_skelectons.py): runs YOLOv8 Pose on raw videos, keeps the actor with the highest confidence per frame, and stores full keypoints as `.npy` tensors for downstream tasks.
+- [organize_videos.py](apps/ml/src/organize_videos.py): walks the original TDTU folder tree, copies every `.mov` into normalized `id.mp4` files, and emits a CSV metadata file containing `place/band/view` and the original filename.
+- [prepare_videos.py](apps/ml/src/prepare_videos.py): resizes every GolfDB/TDTU video to 720p height, applies adaptive CLAHE-based brightness enhancement, and produces clean clips reused by all extraction/evaluation steps (no MediaPipe handoff anymore).
+- [rulebased_detector.py](apps/ml/src/rulebased_detector.py): infers Address/Top/Impact/Finish from wrist trajectories inside `.npy` skeletons and can optionally render debug videos with phase markers.
+- [score_mapper_trainer.py](apps/ml/src/score_mapper_trainer.py): collects model scores versus ground-truth bands, fits a linear + double-power warp to map scores back to the 0–10 scale, and reports per-band accuracy.
 
-### Gợi ý thứ tự chạy
+### Suggested execution order
 
 ```bash
-# 1. Chuẩn hóa video nguồn (GolfDB + TDTU)
+# 1. Normalize GolfDB + TDTU videos
 python apps/ml/src/prepare_videos.py
 
-# 2. Tổ chức và gán metadata cho TDTU (điền lại DATA_FOLDER/OUTPUT_* trước)
+# 2. Reorganize TDTU assets and emit metadata (update DATA_FOLDER / OUTPUT_* first)
 python apps/ml/src/organize_videos.py
 
-# 3. Trích skeleton từ video đã chuẩn hóa
+# 3. Extract skeletons from the normalized videos
 python apps/ml/src/extract_skelectons.py
 
-# 4. Nhận diện pha Address/Top/Impact/Finish và (tùy chọn) tạo video debug
+# 4. Detect Address/Top/Impact/Finish phases (optional debug video)
 python apps/ml/src/rulebased_detector.py
 
-# 5. Điều chỉnh event frame trong GolfDB CSV (cập nhật đường dẫn trước)
+# 5. Offset GolfDB CSV event frames (adjust paths beforehand)
 python apps/ml/src/adjust_event_frames.py
 
-# 6. Đánh giá một skeleton người dùng với mẫu tham chiếu
+# 6. Evaluate one user skeleton against references
 python apps/ml/src/evaluate.py
 
-# 7. Huấn luyện bộ chuyển đổi điểm -> band thực tế
+# 7. Train the score-to-band mapper
 python apps/ml/src/score_mapper_trainer.py
 ```
 
-> Lưu ý: trước khi chạy từng script hãy cập nhật đường dẫn cấu hình trong file tương ứng (thư mục video, skeleton, CSV, JSON đầu ra, model YOLO, v.v.) và đảm bảo môi trường `datathon2025` đã được kích hoạt đầy đủ dependency (OpenCV, Ultralytics, NumPy, Pandas, SciPy,...).
+> Before running any script, update its hard-coded paths (video folders, skeleton directories, CSV/JSON outputs, YOLO weights, etc.) and make sure the `datathon2025` environment has all dependencies (OpenCV, Ultralytics, NumPy, Pandas, SciPy, ...).
 
-### Notebooks liên quan
+### Related notebooks
 
-- [apps/ml/notebooks/eda_dataset_comparison.ipynb](apps/ml/notebooks/eda_dataset_comparison.ipynb) thực hiện EDA so sánh dữ liệu TDTU và GolfDB: thống kê phân bố góc quay, môi trường, kỹ năng, phân tích variance skeleton để chứng minh GolfDB là bộ tham chiếu chuẩn.
+- [apps/ml/notebooks/eda_dataset_comparison.ipynb](apps/ml/notebooks/eda_dataset_comparison.ipynb) contains the TDTU vs GolfDB exploratory analysis: camera-view distribution, environment split, skill histogram, and skeleton variance evidence that GolfDB is the authoritative reference set.
 
 ## IoT edge node (Device/)
 
-- [Device/src/main.cpp](Device/src/main.cpp#L1-L47) là entrypoint chạy trên ESP32: sau khi nhận lệnh `START` qua MQTT thì đọc IMU liên tục, phát hiện va chạm và gửi kết quả về topic phản hồi.
-- [Device/src/sensors/IMUSensor.*](Device/src/sensors/IMUSensor.cpp#L1-L35) gói MPU6050, quy đổi raw value sang gia tốc (g) và vận tốc góc (deg/s) rồi trả về độ lớn vector.
-- [Device/src/detection/ImpactDetector.*](Device/src/detection/ImpactDetector.cpp#L1-L18) so sánh gia tốc/vận tốc góc với ngưỡng (`ACC_THRESHOLD`, `GYRO_THRESHOLD`) đồng thời áp dụng thời gian hồi để tránh spam.
-- [Device/src/communication/MqttClient.*](Device/src/communication/MqttClient.cpp#L1-L69) quản lý Wi-Fi, MQTT và giao thức điều khiển: subscribe lệnh từ topic `MQTT_TOPIC_CMD`, publish JSON kết quả lên `MQTT_TOPIC_RESULT` với thời điểm va chạm, độ trễ và biên độ.
-- Cấu hình phần cứng/mạng nằm trong [Device/src/config.h](Device/src/config.h) (SSID, broker, topic, ngưỡng cảm biến); cập nhật file này trước khi flash.
+- [Device/src/main.cpp](Device/src/main.cpp#L1-L47) is the ESP32 entrypoint: after receiving a `START` MQTT command it streams IMU data, detects impacts, and publishes the result payload.
+- [Device/src/sensors/IMUSensor.*](Device/src/sensors/IMUSensor.cpp#L1-L35) wraps the MPU6050, converts raw readings to acceleration (g) and angular velocity (deg/s), and exposes magnitude helpers.
+- [Device/src/detection/ImpactDetector.*](Device/src/detection/ImpactDetector.cpp#L1-L18) compares acceleration/gyro magnitudes against `ACC_THRESHOLD`/`GYRO_THRESHOLD` with a cooldown window to prevent double-triggering.
+- [Device/src/communication/MqttClient.*](Device/src/communication/MqttClient.cpp#L1-L69) manages Wi-Fi, MQTT lifecycle, command subscription (`MQTT_TOPIC_CMD`), and publishes JSON results on `MQTT_TOPIC_RESULT` (timestamps, delay, magnitudes).
+- Hardware/network constants live in [Device/src/config.h](Device/src/config.h); update SSID, broker, topics, and thresholds before flashing the firmware.
 
-### Cách build & flash nhanh bằng PlatformIO
+### PlatformIO build & flash quickstart
 
 ```bash
 cd Device
 pio run              # build firmware
-pio run -t upload    # flash ESP32 (ESP32 DOIT Devkit V1 theo platformio.ini)
-pio device monitor   # xem log nối tiếp 115200 bps
+pio run -t upload    # flash ESP32 (ESP32 DOIT Devkit V1 per platformio.ini)
+pio device monitor   # view serial logs at 115200 bps
 ```
 
-> Yêu cầu đã cài PlatformIO CLI (`pip install platformio` hoặc cài VS Code PlatformIO). Trước khi cắm board nhớ cập nhật `config.h` với Wi-Fi/MQTT thật, sau đó reset để node kết nối và sẵn sàng nhận lệnh từ backend/web.
+> Requires PlatformIO CLI (`pip install platformio` or the VS Code extension). Configure `config.h` with real Wi-Fi/MQTT credentials, then reset the board so the node reconnects and waits for commands from the backend/web.
