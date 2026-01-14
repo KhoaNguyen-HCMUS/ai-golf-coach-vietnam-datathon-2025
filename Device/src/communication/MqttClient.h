@@ -1,5 +1,4 @@
 #pragma once
-
 #include <WiFi.h>
 #include <PubSubClient.h>
 
@@ -8,20 +7,21 @@ public:
     void begin();
     void loop();
 
-    bool shouldStartMeasuring();
-    void resetCommand();
+    bool shouldStart();
+    bool shouldStop();
+    void resetFlags();
 
-    void publishImpact(unsigned long startTimestamp,
-                       unsigned long impactTimestamp,
-                       float accMag,
-                       float gyroMag);
+    void publishSession(unsigned long startTime,
+                        const unsigned long* hits,
+                        int count);
 
 private:
-    WiFiClient wifiClient;
-    PubSubClient mqttClient;
+    WiFiClient wifi;
+    PubSubClient mqtt;
 
-    bool startMeasureFlag = false;
+    bool startFlag = false;
+    bool stopFlag  = false;
 
-    static void callback(char* topic, byte* payload, unsigned int length);
     static MqttClient* instance;
+    static void callback(char* topic, byte* payload, unsigned int length);
 };
