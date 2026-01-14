@@ -32,3 +32,6 @@ data
 
 # model weights
 *.pt
+
+# python type checking
+pyrightconfig.json

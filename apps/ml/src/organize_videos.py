@@ -1,11 +1,13 @@
 import os
 import csv
 import shutil
+from pathlib import Path
 
 # Configuration
-DATA_FOLDER = '' # Thư mục gốc chứa video .mov của TDTU Golf Pose Dataset
-OUTPUT_VIDEO_FOLDER = '' # Thư mục đích để lưu video đã tổ chức
-OUTPUT_CSV = '' # Đường dẫn tới file output CSV metadata
+ROOT = Path(__file__).resolve().parents[3]  # Repo root
+DATA_FOLDER = ROOT / 'data' / 'TDTU-Golf-Pose-v1' # Thư mục gốc chứa video .mov của TDTU Golf Pose Dataset
+OUTPUT_VIDEO_FOLDER = ROOT / 'data' / 'TDTU-Golf-Pose-v1' / 'videos' # Thư mục đích để lưu video đã tổ chức
+OUTPUT_CSV = ROOT / 'data' / 'TDTU-Golf-Pose-v1'/ 'videos_data.csv' # Đường dẫn tới file output CSV metadata
 
 def extract_metadata(folder_path, filename):
     """Extract place, band, and view from folder structure and filename"""

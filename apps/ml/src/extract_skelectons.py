@@ -7,10 +7,12 @@ import glob
 import concurrent.futures
 import threading
 import time
+from pathlib import Path
 
 # --- CẤU HÌNH ---
-INPUT_FOLDER = "./data"  # Folder chứa video gốc (0.mp4, 1.mp4...)
-OUTPUT_FOLDER = "./data/TDTU_skeletons_npy"  # Folder lưu kết quả
+ROOT = Path(__file__).resolve().parents[3]  # Repo root
+INPUT_FOLDER = ROOT / 'data' / 'ready_for_mediapipe' / 'TDTU'  # Folder chứa video gốc (0.mp4, 1.mp4...)
+OUTPUT_FOLDER = ROOT / 'data' / 'TDTU_skeletons_npy'  # Folder lưu kết quả
 CONF_THRESHOLD = 0.5  # Độ tin cậy tối thiểu để chọn người
 MAX_WORKERS = 6  # Số luồng chạy song song (Tùy CPU mạnh yếu)
 

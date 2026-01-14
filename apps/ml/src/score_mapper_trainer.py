@@ -2,15 +2,16 @@ import csv
 import json
 import os
 from typing import Dict, List, Tuple
-
+from pathlib import Path
 import numpy as np
 
-from evaluate_layers34 import evaluate_user_skeleton, GolfNpyDetector
+from evaluate import evaluate_user_skeleton, GolfNpyDetector
 
-METADATA_PATH = "video_metadata.csv"
-SKELETON_DIR = "data/TDTU_skeletons_npy"
-WEIGHTS_OUTPUT_PATH = "outputs/score_mapper_weights.json"
-EVAL_OUTPUT_PATH = "outputs/score_mapper_eval.json"
+ROOT = Path(__file__).resolve().parents[3]
+METADATA_PATH = str(ROOT / "data" / "TDTU-Golf-Pose-v1" / "videos_data.csv")
+SKELETON_DIR = str(ROOT / "data" / "TDTU_skeletons_npy")
+WEIGHTS_OUTPUT_PATH = str(ROOT / "outputs" / "score_mapper_weights.json")
+EVAL_OUTPUT_PATH = str(ROOT / "outputs" / "score_mapper_eval.json")
 
 BAND_BUCKETS: List[Tuple[float, float, str]] = [
     (1.0, 2.0, "Band 1-2"),

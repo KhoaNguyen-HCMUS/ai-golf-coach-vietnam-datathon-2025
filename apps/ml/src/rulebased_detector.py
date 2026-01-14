@@ -3,9 +3,12 @@ import pandas as pd
 import os
 import glob
 from scipy.signal import savgol_filter
+from pathlib import Path
 
 # from visualize_phases import visualize_video
-
+ROOT = Path(__file__).resolve().parents[3]  # Repo root
+INPUT_PATH = ROOT / 'data' / 'TDTU_skeletons_npy'  # Folder chứa .npy
+OUTPUT_CSV = ROOT / 'data' / 'tdtu_npy_detections.csv'
 
 class GolfNpyDetector:
     def __init__(self):
@@ -211,6 +214,6 @@ def process_npy_folder(folder_path, output_csv):
 
 
 if __name__ == "__main__":
-    input_folder = "data/TDTU_skeletons_npy"
-    output_file = "tdtu_npy_detections.csv"
+    input_folder = INPUT_PATH
+    output_file = OUTPUT_CSV
     process_npy_folder(input_folder, output_file)

@@ -2,22 +2,23 @@ import json
 import math
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from pathlib import Path
 
 from rulebased_detector import GolfNpyDetector
 
 # ---------------------------------------------------------------------------
 # Configuration (edit these paths directly, no CLI args required)
 # ---------------------------------------------------------------------------
-USER_SKELETON_PATH = "./data/TDTU_skeletons_npy/3.npy"
-OUTPUT_JSON_PATH = "outputs/24_eval_layers34.json"
-
+ROOT = Path(__file__).resolve().parents[3]  # Repo root
+USER_SKELETON_PATH = ROOT / 'data' / 'TDTU_skeletons_npy' / '3.npy'  # Path to user skeleton .npy
+OUTPUT_JSON_PATH = ROOT / 'outputs' / '24_eval_layers34.json'
 # Reference templates for different camera views (edit paths to match your dataset)
 VIEW_REFERENCE_MAP = {
-    "front_view": "data/golfdb/skeletons_npy/8.npy",
-    "back_view": "data/golfdb/skeletons_npy/2.npy",
+    "front_view": str(ROOT / "data" / "golfdb" / "skeletons_npy" / "8.npy"),
+    "back_view": str(ROOT / "data" / "golfdb" / "skeletons_npy" / "2.npy"),
 }
 
 PHASE_TARGET_FRAMES = {"backswing": 40, "downswing": 10, "follow_through": 20}
@@ -228,7 +229,7 @@ def dtw_distance(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
 
 def compute_quantitative_scores(
     user: PreprocessResult, reference: PreprocessResult
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     layout = user.layout
     upper_joints = layout.require(
         "left_shoulder",
@@ -296,8 +297,8 @@ def clamp_idx(idx: int, total: int) -> int:
 
 def evaluate_geometric_rules(
     normalized: np.ndarray, phases: Dict[str, int], layout: SkeletonLayout
-) -> List[Dict[str, object]]:
-    errors: List[Dict[str, object]] = []
+) -> List[Dict[str, Any]]:
+    errors: List[Dict[str, Any]] = []
     total = len(normalized)
     idx_addr = clamp_idx(phases["Address"], total)
     idx_top = clamp_idx(phases["Top"], total)
@@ -364,7 +365,7 @@ def evaluate_geometric_rules(
 
 
 def apply_penalties(
-    base_score: float, errors: List[Dict[str, object]]
+    base_score: float, errors: List[Dict[str, Any]]
 ) -> Tuple[float, float]:
     total_penalty = 0.0
     for err in errors:
@@ -374,7 +375,7 @@ def apply_penalties(
     return final_score, total_penalty
 
 
-def generate_feedback(errors: List[Dict[str, object]]) -> List[str]:
+def generate_feedback(errors: List[Dict[str, Any]]) -> List[str]:
     messages: List[str] = []
     for err in errors:
         template = FEEDBACK_TEMPLATES.get(err["code"])
@@ -393,7 +394,7 @@ def generate_feedback(errors: List[Dict[str, object]]) -> List[str]:
     return messages
 
 
-def save_report(report: Dict[str, object], path: str) -> None:
+def save_report(report: Dict[str, Any], path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fp:
         json.dump(report, fp, indent=2)
@@ -404,8 +405,8 @@ def evaluate_view_pipeline(
     reference_path: str,
     detector: GolfNpyDetector,
     user: PreprocessResult,
-    qualitative_errors: List[Dict[str, object]],
-) -> Dict[str, object]:
+    qualitative_errors: List[Dict[str, Any]],
+) -> Dict[str, Any]:
     reference = symmetric_preprocess(reference_path, detector)
 
     if user.num_keypoints != reference.num_keypoints:
@@ -434,13 +435,13 @@ def evaluate_view_pipeline(
 def evaluate_user_skeleton(
     user_path: str,
     detector: Optional[GolfNpyDetector] = None,
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     local_detector = detector or GolfNpyDetector()
     user = symmetric_preprocess(user_path, local_detector)
     qualitative = evaluate_geometric_rules(user.normalized, user.phases, user.layout)
     feedback = generate_feedback(qualitative)
 
-    view_results: List[Dict[str, object]] = []
+    view_results: List[Dict[str, Any]] = []
     for view_name, ref_path in VIEW_REFERENCE_MAP.items():
         try:
             result = evaluate_view_pipeline(
@@ -470,7 +471,7 @@ def evaluate_user_skeleton(
 
 
 def main() -> None:
-    evaluation = evaluate_user_skeleton(USER_SKELETON_PATH)
+    evaluation = evaluate_user_skeleton(str(USER_SKELETON_PATH))
     view_results = evaluation["view_results"]
     best_result = evaluation["best_result"]
     qualitative = evaluation["qualitative"]
