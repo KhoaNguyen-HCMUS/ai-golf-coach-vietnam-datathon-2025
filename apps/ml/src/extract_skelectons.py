@@ -15,10 +15,10 @@ from transformers import AutoImageProcessor, VitPoseForPoseEstimation
 
 # --- CẤU HÌNH ---
 ROOT = Path(__file__).resolve().parents[3]  # Repo root
-INPUT_FOLDER = ROOT / 'data' / 'ready_for_mediapipe' / 'TDTU'  # Folder chứa video gốc (0.mp4, 1.mp4...)
-OUTPUT_FOLDER = ROOT / 'data' / 'TDTU_skeletons_npy'  # Folder lưu kết quả
+INPUT_FOLDER = ROOT / 'data' / 'golf_db' / 'videos_hd'  # Folder chứa video gốc (0.mp4, 1.mp4...)
+OUTPUT_FOLDER = ROOT / 'data' / 'raw_golfdb_skeletons_npy'  # Folder lưu kết quả
 CONF_THRESHOLD = 0.5  # Độ tin cậy tối thiểu để chọn người
-MAX_WORKERS = 2  # Số luồng chạy song song (Giảm bớt vì ViTPose tốn VRAM hơn YOLO)
+MAX_WORKERS = 3  # Số luồng chạy song song (Giảm bớt vì ViTPose tốn VRAM hơn YOLO)
 
 # Đường dẫn model YOLO (Detection)
 # Sử dụng YOLO để detect người (bounding box), sau đó crop cho ViTPose
@@ -249,8 +249,8 @@ def process_video_to_npy(args):
                     # Crop image (OpenCV is BGR, ViTPose expects RGB usually via processor which handles PIL/numpy)
                     # Convert BGR to RGB for PIL
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    crop_img = frame_rgb[y1:y2, x1:x2]
-                    pil_img = Image.fromarray(crop_img)
+                    # crop_img = frame_rgb[y1:y2, x1:x2]
+                    pil_img = Image.fromarray(frame_rgb)
 
                     crop_w = x2 - x1
                     crop_h = y2 - y1
@@ -391,12 +391,13 @@ if __name__ == "__main__":
     # Fix multiprocessing start method for PyTorch/CUDA consistency on Windows
     # import multiprocessing
     # multiprocessing.set_start_method('spawn', force=True)
-    # run_extraction()
+    run_extraction()
 
     # Visualize a test video
-    input_video_path = str(ROOT / 'data' / 'ready_for_mediapipe' / 'TDTU' / '2.mp4')
-    npy_path = str(ROOT / 'data' / 'TDTU_skeletons_npy' / '2.npy')
-    output_dir = ROOT / 'data' / 'visualize_skeleton'
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = str(output_dir / '2.mp4')
-    visualize_pose_video(input_video_path, npy_path, output_path=output_path, conf_threshold=0.1, show_confidence=False)
+    # input_video_path = str(INPUT_FOLDER / '2.mp4')
+    # npy_path = str(ROOT / 'data' / 'raw_TDTU_skeletons_npy' / '2.npy')
+    # # npy_path = str(ROOT / 'data' / 'TDTU_yolopose_skeletons' / '2.npy')
+    # output_dir = ROOT / 'data' / 'raw_TDTU_skeletons_viz'
+    # os.makedirs(output_dir, exist_ok=True)
+    # output_path = str(output_dir / '2.mp4')
+    # visualize_pose_video(input_video_path, npy_path, output_path=output_path, conf_threshold=0.1, show_confidence=False)
