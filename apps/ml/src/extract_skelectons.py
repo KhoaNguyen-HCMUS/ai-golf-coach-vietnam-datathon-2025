@@ -15,18 +15,20 @@ from transformers import AutoImageProcessor, VitPoseForPoseEstimation
 
 # --- CẤU HÌNH ---
 ROOT = Path(__file__).resolve().parents[3]  # Repo root
-INPUT_FOLDER = ROOT / 'data' / 'golf_db' / 'videos_hd'  # Folder chứa video gốc (0.mp4, 1.mp4...)
-OUTPUT_FOLDER = ROOT / 'data' / 'raw_golfdb_skeletons_npy'  # Folder lưu kết quả
+INPUT_FOLDER = ROOT / 'data' / 'golfdb' / 'videos_hd' / 'fourth_part'  # Folder chứa video gốc (0.mp4, 1.mp4...)
+OUTPUT_FOLDER = ROOT / 'data' / 'raw_golfdb_skeletons_npy' / 'fourth_part'  # Folder lưu kết quả
 CONF_THRESHOLD = 0.5  # Độ tin cậy tối thiểu để chọn người
-MAX_WORKERS = 3  # Số luồng chạy song song (Giảm bớt vì ViTPose tốn VRAM hơn YOLO)
-
-# Đường dẫn model YOLO (Detection)
-# Sử dụng YOLO để detect người (bounding box), sau đó crop cho ViTPose
-YOLO_DET_MODEL = "yolov8n.pt"  # Bản nano cho nhanh, chỉ cần box chuẩn
+MAX_WORKERS = 7  # Số luồng chạy song song (Giảm bớt vì ViTPose tốn VRAM hơn YOLO)
 
 # Đường dẫn model ViTPose (Hugging Face)
-# "usyd-community/vitpose-base-simple" là lựa chọn cân bằng (Base model)
-VITPOSE_MODEL_ID = "usyd-community/vitpose-base-simple"
+# Load from local directory for offline usage
+MODELS_DIR = ROOT / 'apps' / 'models' # Updated to match where download_models.py put it
+VITPOSE_MODEL_ID = str(MODELS_DIR / "vitpose-base-simple")
+YOLO_DET_MODEL = str(MODELS_DIR / "yolov8n.pt")
+
+# Verify models exist
+if not os.path.exists(VITPOSE_MODEL_ID) or not os.path.exists(YOLO_DET_MODEL):
+    raise RuntimeError(f"Offline models not found in {MODELS_DIR}. Please run 'apps/ml/src/download_models.py' first.")
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -355,8 +357,8 @@ def run_extraction():
     print(f"--> Config: YOLOv8 Detection + ViTPose ({VITPOSE_MODEL_ID})")
     print(f"--> Device: {DEVICE} | Workers: {MAX_WORKERS}")
     
-    # Pre-download model in the main process to avoid race conditions/multiple downloads in workers
-    print("--> Verifying/Downloading model in main process...")
+    # Pre-load model in the main process to ensure everything is working
+    print(f"--> Verifying local model at {VITPOSE_MODEL_ID}...")
     try:
         AutoImageProcessor.from_pretrained(VITPOSE_MODEL_ID, use_fast=True)
         VitPoseForPoseEstimation.from_pretrained(VITPOSE_MODEL_ID)
