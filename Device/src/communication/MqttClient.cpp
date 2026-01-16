@@ -8,7 +8,12 @@ MqttClient* MqttClient::instance = nullptr;
 void MqttClient::begin() {
     instance = this;
 
+    WiFi.mode(WIFI_STA);  // Thêm dòng này
+    WiFi.disconnect();     // Clear previous connections
+    delay(100);
+
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    Serial.println("SSID: " + String(WIFI_SSID) + " - " + "PASSWORD: " + String(WIFI_PASSWORD));
     Serial.print("Connecting to WiFi");
     while (WiFi.status() != WL_CONNECTED) 
     {
@@ -24,7 +29,7 @@ void MqttClient::begin() {
     mqtt.setClient(*secureClient);
     mqtt.setServer(MQTT_BROKER, MQTT_PORT);
     mqtt.setCallback(callback);
-
+    
     while (!mqtt.connected()) {
         mqtt.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS);
         delay(300);
