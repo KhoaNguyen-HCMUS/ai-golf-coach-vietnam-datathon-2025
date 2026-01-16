@@ -2,6 +2,7 @@
 #include "../config.h"
 #include <ArduinoJson.h>
 
+
 MqttClient* MqttClient::instance = nullptr;
 
 void MqttClient::begin() {
@@ -14,17 +15,23 @@ void MqttClient::begin() {
         Serial.print(".");
         delay(300);
     }
+    Serial.println();
+    Serial.println("Connected to Wifi");
 
-    mqtt.setClient(wifi);
+    WiFiClientSecure* secureClient = new WiFiClientSecure();
+    secureClient->setInsecure(); 
+
+    mqtt.setClient(*secureClient);
     mqtt.setServer(MQTT_BROKER, MQTT_PORT);
     mqtt.setCallback(callback);
 
     while (!mqtt.connected()) {
-        mqtt.connect(MQTT_CLIENT_ID);
+        mqtt.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS);
         delay(300);
     }
-
+    Serial.println("Connected with MQTT");
     mqtt.subscribe(MQTT_TOPIC_CMD);
+    Serial.println("Subscribed to topic " + String(MQTT_TOPIC_CMD));
 }
 
 void MqttClient::loop() {
