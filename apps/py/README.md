@@ -50,83 +50,64 @@ Sau khi chạy server, truy cập:
 GET /health
 ```
 
-Kiểm tra trạng thái API và model.
+Kiểm tra trạng thái API.
 
 **Response:**
 
 ```json
 {
   "status": "healthy",
-  "model_loaded": true,
-  "model_dir": "models"
+  "message": "API is running"
 }
 ```
 
-### 2. Predict từ File Path
+### 2. Predict từ Video Upload ⭐ **NEW**
 
 ```bash
 POST /predict
-Content-Type: application/json
-
-{
-  "skeleton_path": "data/TDTU_skeletons_npy/2.npy"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "prediction": 2,
-  "band_name": "band 4-6",
-  "probabilities": [0.1, 0.2, 0.5, 0.15, 0.05],
-  "message": "Prediction thành công"
-}
-```
-
-### 3. Predict từ Uploaded File
-
-```bash
-POST /predict/upload
 Content-Type: multipart/form-data
 
-file: <skeleton.npy file>
+file: <video.mp4>
 ```
 
-Upload file `.npy` và nhận prediction.
-
-### 4. Batch Predict
-
-```bash
-POST /predict/batch
-Content-Type: application/json
-
-{
-  "skeleton_paths": [
-    "data/TDTU_skeletons_npy/2.npy",
-    "data/TDTU_skeletons_npy/3.npy",
-    "data/TDTU_skeletons_npy/8.npy"
-  ]
-}
-```
+Upload video golf swing và nhận prediction với insights chi tiết.
 
 **Response:**
 
 ```json
 {
-  "success": true,
-  "results": [
+  "score": "band_0_2",
+  "band_index": 0,
+  "confidence": 0.988,
+  "probabilities": {
+    "band_0_2": 0.988,
+    "band_2_4": 0.012,
+    "band_4_6": 0.0,
+    "band_6_8": 0.0,
+    "band_8_10": 0.0
+  },
+  "insights": {
+    "strengths": [
+      "Bio Finish Angle: Good (84.0 degrees), close to pro avg (84.9)",
+      "Bio Shoulder Loc: Good (0.2), close to pro avg (2.2)"
+    ],
+    "weaknesses": [
+      "Bio Shoulder Hanging Back: above pro level (19.1 vs 6.1 ratio)",
+      "Bio Left Arm Angle Top: below pro level (72.5 vs 143.3 degrees)"
+    ]
+  },
+  "features": [
     {
-      "skeleton_path": "data/TDTU_skeletons_npy/2.npy",
-      "prediction": 2,
-      "band_name": "band 4-6",
-      "probabilities": [0.1, 0.2, 0.5, 0.15, 0.05],
-      "success": true
-    },
-    ...
-  ],
-  "message": "Đã xử lý 3 files"
+      "name": "Bio Finish Angle",
+      "key": "bio_finish_angle",
+      "value": 84.0,
+      "unit": "degrees",
+      "importance": 0.085,
+      "evaluation": "Good",
+      "description": "Within pro range (84.9±5.2)"
+    }
+    // ... more features
+  ]
 }
 ```
 
@@ -165,14 +146,9 @@ Model predict 5 handicap bands:
 # Health check
 curl http://localhost:8000/health
 
-# Predict từ path
+# Predict từ video
 curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"skeleton_path": "data/TDTU_skeletons_npy/2.npy"}'
-
-# Upload file
-curl -X POST http://localhost:8000/predict/upload \
-  -F "file=@data/TDTU_skeletons_npy/2.npy"
+  -F "file=@../data/raw/1.mp4"
 ```
 
 ### Sử dụng Python requests
@@ -184,17 +160,10 @@ import requests
 response = requests.get("http://localhost:8000/health")
 print(response.json())
 
-# Predict
-response = requests.post(
-    "http://localhost:8000/predict",
-    json={"skeleton_path": "data/TDTU_skeletons_npy/2.npy"}
-)
-print(response.json())
-
-# Upload file
-with open("data/TDTU_skeletons_npy/2.npy", "rb") as f:
+# Predict từ video
+with open("../data/raw/1.mp4", "rb") as f:
     response = requests.post(
-        "http://localhost:8000/predict/upload",
+        "http://localhost:8000/predict",
         files={"file": f}
     )
 print(response.json())
@@ -231,11 +200,17 @@ Ví dụ tích hợp với Node.js:
 
 ```javascript
 const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
 
-async function predictGolfSwing(skeletonPath) {
-  const response = await axios.post('http://localhost:8000/predict', {
-    skeleton_path: skeletonPath,
+async function predictGolfSwing(videoPath) {
+  const formData = new FormData();
+  formData.append('file', fs.createReadStream(videoPath));
+  
+  const response = await axios.post('http://localhost:8000/predict', formData, {
+    headers: formData.getHeaders()
   });
+  
   return response.data;
 }
 ```
