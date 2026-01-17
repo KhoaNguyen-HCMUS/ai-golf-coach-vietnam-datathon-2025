@@ -1,18 +1,16 @@
 ### Start command
-POST http://10.20.121.231:5050/mqtt/cmd/start
-Content-Type: application/json
+POST http://10.20.121.231:5050/api/mqtt/cmd/start
 
 
 ### Stop command
-POST http://10.20.121.231:5050/mqtt/cmd/stop
+POST http://10.20.121.231:5050/api/mqtt/cmd/stop
 Content-Type: application/json
 
 {
-    "video": "<BASE64_ENCODED_VIDEO_DATA>"
+    "video": ".mp4"
 }
 
 
 ### Stop command without video upload
-POST http://10.20.121.231:5050/mqtt/cmd/stop-no-video
-Content-Type: application/json
+POST http://10.20.121.231:5050/api/mqtt/cmd/stop-no-video
 

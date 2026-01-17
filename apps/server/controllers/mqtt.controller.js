@@ -4,6 +4,7 @@ import * as videoService from "../services/video.service.js";
 export const startController = async (req, res) => {
   try {
     await mqttService.publishCmd("START");
+    console.log("START controller called");
     res.status(200).json({ message: "START command published" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -13,6 +14,7 @@ export const startController = async (req, res) => {
 export const stopController = async (req, res) => {
   try {
     await mqttService.publishCmd("STOP");
+    console.log("STOP controller called");
 
     if (!req.file) {
       return res.status(200).json({
@@ -42,6 +44,7 @@ export const stopController = async (req, res) => {
 export const stopWithoutVideoController = async (req, res) => {
   try {
     await mqttService.publishCmd("STOP");
+    console.log("STOP without upload video")
     res.status(200).json({ message: "STOP without video uploaded" });
   } catch (error) {
     res.status(500).json({ error: error.message });
