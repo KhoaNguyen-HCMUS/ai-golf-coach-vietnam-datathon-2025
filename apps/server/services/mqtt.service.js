@@ -2,6 +2,7 @@ import mqtt from 'mqtt'
 import { MQTT_CONFIG, MQTT_TOPICS } from '../config/config.js'
 
 let client = null
+let lastHits = null
 
 export const connectMqtt = () => {
     client = mqtt.connect(MQTT_CONFIG.broker, {
@@ -34,6 +35,7 @@ export const connectMqtt = () => {
             if (topic === MQTT_TOPICS.result) {
                 const data = JSON.parse(message.toString())
                 console.log("Result from esp32: ", data)
+                lastHits = data.hits || null
             }
         })
     })
@@ -50,5 +52,12 @@ export const publishCmd = async (cmd) => {
             if (err) reject(new Error('Publish failed: ' + err.message))
             else resolve()
         })
+        console.log(`Published command: ${cmd}`)
     })
+}
+
+export const getLastHits = () => {
+    const data = lastHits
+    lastHits = null
+    return data
 }
