@@ -6,6 +6,7 @@ import * as mqttService from './services/mqtt.service.js'
 import * as websocketService from './services/websocket.service.js'
 import mqttRouter from './routes/mqtt.route.js'
 import chatbotRouter from './routes/chatbot.route.js'
+import analyzeRouter from './routes/analyze.route.js'
 
 const app = express()
 const PORT = process.env.PORT
@@ -15,6 +16,7 @@ app.use(cors())
 app.use(express.json())
 app.use('/api/mqtt', mqttRouter)
 app.use('/api/chatbot', chatbotRouter)
+app.use('/api/analyze', analyzeRouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'AI Golf Coach API' })
