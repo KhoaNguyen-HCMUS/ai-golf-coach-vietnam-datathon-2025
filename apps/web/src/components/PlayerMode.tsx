@@ -4,22 +4,19 @@ import { useState, useRef, useEffect } from 'react';
 import ChatInterface from './ChatInterface';
 import VideoUploadArea from './VideoUploadArea';
 import VideoFeedbackSection from './VideoFeedbackSection';
+import { useGolfWebSocket } from '../hooks/useGolfWebSocket';
+import { sendStopCommand } from '../services/mqtt.service';
 import type { Message } from '../types';
 
 export default function PlayerMode() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content:
-        "Welcome to SwingAI Lab! Upload your swing video and ask me anything about your form. I'll analyze it and provide detailed biomechanics insights.",
-      timestamp: new Date(),
-    },
-  ]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
-  const [feedbackText, setFeedbackText] = useState<string | null>(null);
+  const [feedbackHTML, setFeedbackHTML] = useState<string | null>(null);
+  const [pendingTimestamp, setPendingTimestamp] = useState<string | null>(null);
+  
+  // WebSocket connection
+  const { isConnected, subscribe, results, error: wsError } = useGolfWebSocket();
   const [chatMessages, setChatMessages] = useState<Message[]>([
     {
       id: '1',
@@ -39,19 +36,79 @@ export default function PlayerMode() {
     scrollToBottom();
   }, [chatMessages]);
 
-  const handleVideoUpload = (file: File) => {
+  const handleVideoUpload = async (file: File) => {
     setVideoFile(file);
-    setFeedbackText(null);
+    setFeedbackHTML(null);
     setIsProcessingVideo(true);
-    
-    // TODO: Call API to process video and get feedback
-    // For now, simulate processing
-    setTimeout(() => {
+
+    try {
+      // Step 1: Upload video via API
+      const response = await sendStopCommand(file);
+      console.log('✓ Video uploaded. Full response:', JSON.stringify(response, null, 2));
+      console.log('✓ Response keys:', Object.keys(response));
+      console.log('✓ Response.timestamp:', response.timestamp);
+      console.log('✓ Response type:', typeof response);
+
+      // Step 2: Subscribe to WebSocket session if timestamp is available
+      if (response.timestamp) {
+        if (isConnected) {
+          // Subscribe immediately if connected
+          subscribe(response.timestamp);
+        } else {
+          // Store timestamp and wait for connection
+          console.warn('⚠ WebSocket not connected. Will subscribe when connected...');
+          setPendingTimestamp(response.timestamp);
+        }
+      } else {
+        console.warn('⚠ No timestamp in response. Cannot subscribe to analysis.');
+        setIsProcessingVideo(false);
+      }
+    } catch (error: any) {
+      console.error('✗ Failed to upload video:', error);
       setIsProcessingVideo(false);
-      // Mock feedback text - will be replaced with real API response
-      setFeedbackText('Based on your swing, I detected early extension and excessive head movement, which contributes to inconsistency. Your hip rotation is good at 42°, but shoulder rotation could be improved. Your score is 7/10.');
-    }, 3000);
+    }
   };
+
+  // Handle WebSocket results
+  useEffect(() => {
+    if (results.length > 0) {
+      // Combine all analysis HTML from multiple hits
+      const combinedHTML = results
+        .map((result, index) => {
+          if (result.analysisHTML) {
+            return `<div class="hit-analysis" data-hit-index="${result.hitIndex}">
+              ${results.length > 1 ? `<h4>Hit #${result.hitIndex}</h4>` : ''}
+              ${result.analysisHTML}
+            </div>`;
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('<hr class="my-4" />');
+
+      if (combinedHTML) {
+        setFeedbackHTML(combinedHTML);
+        setIsProcessingVideo(false);
+      }
+    }
+  }, [results]);
+
+  // Auto-subscribe when WebSocket connects and we have pending timestamp
+  useEffect(() => {
+    if (isConnected && pendingTimestamp) {
+      console.log('✓ WebSocket connected. Subscribing to timestamp:', pendingTimestamp);
+      subscribe(pendingTimestamp);
+      setPendingTimestamp(null);
+    }
+  }, [isConnected, pendingTimestamp, subscribe]);
+
+  // Handle WebSocket errors
+  useEffect(() => {
+    if (wsError) {
+      console.error('WebSocket error:', wsError);
+      // Don't stop processing, just log the error
+    }
+  }, [wsError]);
 
   const handleSendMessage = async (text: string) => {
     const userMessage: Message = {
@@ -98,8 +155,9 @@ export default function PlayerMode() {
         <div className="mb-4">
           <VideoFeedbackSection
             videoFileName={videoFile?.name || null}
-            feedbackText={feedbackText}
+            feedbackHTML={feedbackHTML}
             isProcessing={isProcessingVideo}
+            isConnected={isConnected}
           />
         </div>
 

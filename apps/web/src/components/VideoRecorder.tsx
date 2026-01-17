@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Video, Square, RotateCcw, Download, Upload } from 'lucide-react';
-import { sendStartCommand, sendStopCommand, sendStopNoVideoCommand } from '../services/mqtt.service';
+import { sendStartCommand, sendStopNoVideoCommand } from '../services/mqtt.service';
 
 interface VideoRecorderProps {
   onRecordComplete: (file: File) => void;
@@ -18,7 +18,6 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [recordingFormat, setRecordingFormat] = useState<string>('');
   const [isSendingStartCommand, setIsSendingStartCommand] = useState(false);
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [isSendingStopNoVideo, setIsSendingStopNoVideo] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -322,7 +321,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
     }
   };
 
-  const handleUseVideo = async () => {
+  const handleUseVideo = () => {
     if (!recordedBlob) {
       return;
     }
@@ -351,23 +350,8 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
       'MB'
     );
 
-    // Send STOP command with video file
-    setIsUploadingVideo(true);
-    setError(null);
-
-    try {
-      const response = await sendStopCommand(file);
-      console.log('Video uploaded successfully:', response);
-      // Call onRecordComplete after successful upload
-      onRecordComplete(file);
-    } catch (uploadError: any) {
-      console.error('Failed to upload video:', uploadError);
-      setError(`Failed to upload video: ${uploadError.message}`);
-      // Still call onRecordComplete even if upload fails (user can retry later)
-      onRecordComplete(file);
-    } finally {
-      setIsUploadingVideo(false);
-    }
+    // Call onRecordComplete - parent component will handle upload and WebSocket
+    onRecordComplete(file);
   };
 
   const formatTime = (seconds: number) => {
@@ -516,20 +500,10 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
             <>
               <button
                 onClick={handleUseVideo}
-                disabled={isUploadingVideo}
-                className='flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+                className='flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all'
               >
-                {isUploadingVideo ? (
-                  <>
-                    <div className='h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className='h-5 w-5' />
-                    Use This Video
-                  </>
-                )}
+                <Upload className='h-5 w-5' />
+                Use This Video
               </button>
               <button
                 onClick={resetRecording}

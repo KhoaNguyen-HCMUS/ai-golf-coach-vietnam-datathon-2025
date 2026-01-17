@@ -10,6 +10,14 @@ export interface MqttStartResponse {
 export interface MqttStopResponse {
   message: string;
   videoUploaded?: boolean;
+  timestamp?: string;
+  outputDir?: string;
+  totalClips?: number;
+  segments?: Array<{
+    hitIndex: number;
+    hitTime: number;
+    videoPath: string;
+  }>;
 }
 
 export interface MqttStopNoVideoResponse {
@@ -67,7 +75,13 @@ export const sendStopCommand = async (videoFile?: File): Promise<MqttStopRespons
     }
 
     const data = await response.json();
-    console.log('MQTT STOP command sent successfully:', data);
+    console.log('MQTT STOP command sent successfully');
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Response data:', JSON.stringify(data, null, 2));
+    console.log('Response data keys:', Object.keys(data));
+    console.log('Response data.timestamp:', data.timestamp);
+    
     // Show success toast with message from response
     if (data.message) {
       toast.success(data.message);
