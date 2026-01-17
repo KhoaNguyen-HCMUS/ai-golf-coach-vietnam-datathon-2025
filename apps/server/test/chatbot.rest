@@ -1,0 +1,11 @@
+### Ask chatbot with history
+POST http://10.20.121.231:5050/api/chatbot/ask
+Content-Type: application/json
+
+{
+  "history": [
+    "I tend to slice my driver. Any quick checkpoints?",
+    "How can I keep my wrists stable through impact?"
+  ],
+  "message": "My backswing feels rushed. How do I smooth it out?"
+}
