@@ -25,14 +25,14 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
   // Check browser compatibility
   useEffect(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError("Trình duyệt của bạn không hỗ trợ truy cập camera. Vui lòng sử dụng Chrome, Firefox, Safari hoặc Edge.")
+      setError("Your browser does not support camera access. Please use Chrome, Firefox, Safari, or Edge.")
       setHasPermission(false)
       setIsLoading(false)
       return
     }
 
     if (!window.MediaRecorder) {
-      setError("Trình duyệt của bạn không hỗ trợ quay video. Vui lòng cập nhật trình duyệt.")
+      setError("Your browser does not support video recording. Please update your browser.")
       setHasPermission(false)
       setIsLoading(false)
       return
@@ -75,18 +75,18 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
         setError(null)
       } catch (err: any) {
         console.error("Error accessing camera:", err)
-        let errorMessage = "Không thể truy cập camera."
+        let errorMessage = "Unable to access camera."
         
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          errorMessage = "Quyền truy cập camera bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt."
+          errorMessage = "Camera permission denied. Please grant permission in browser settings."
         } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          errorMessage = "Không tìm thấy camera. Vui lòng kiểm tra kết nối camera."
+          errorMessage = "Camera not found. Please check camera connection."
         } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-          errorMessage = "Camera đang được sử dụng bởi ứng dụng khác. Vui lòng đóng ứng dụng đó."
+          errorMessage = "Camera is being used by another application. Please close that application."
         } else if (err.message === 'SECURE_CONTEXT_REQUIRED') {
-          errorMessage = "Camera chỉ hoạt động trên HTTPS hoặc localhost. Vui lòng truy cập qua localhost hoặc HTTPS."
+          errorMessage = "Camera only works on HTTPS or localhost. Please access via localhost or HTTPS."
         } else if (err.name === 'OverconstrainedError') {
-          errorMessage = "Camera không hỗ trợ độ phân giải yêu cầu. Đang thử cài đặt mặc định..."
+          errorMessage = "Camera does not support requested resolution. Trying default settings..."
           // Retry with default settings
           try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -102,7 +102,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
             setIsLoading(false)
             return
           } catch (retryErr) {
-            errorMessage = "Không thể truy cập camera với bất kỳ cài đặt nào."
+            errorMessage = "Unable to access camera with any settings."
           }
         }
         
@@ -150,7 +150,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
 
   const startRecording = () => {
     if (!streamRef.current) {
-      setError("Camera chưa sẵn sàng")
+      setError("Camera is not ready")
       return
     }
 
@@ -163,7 +163,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
       
       // Check if MediaRecorder is actually supported
       if (!mediaRecorder) {
-        throw new Error('MediaRecorder không được hỗ trợ')
+        throw new Error('MediaRecorder is not supported')
       }
 
       mediaRecorder.ondataavailable = (event) => {
@@ -187,7 +187,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
 
       mediaRecorder.onerror = (event: any) => {
         console.error('MediaRecorder error:', event)
-        setError('Lỗi khi quay video. Vui lòng thử lại.')
+        setError('Error recording video. Please try again.')
         setIsRecording(false)
         if (timerRef.current) {
           clearInterval(timerRef.current)
@@ -206,7 +206,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
       }, 1000)
     } catch (err) {
       console.error("Error starting recording:", err)
-      setError("Không thể bắt đầu quay video")
+      setError("Unable to start recording")
     }
   }
 
@@ -258,8 +258,8 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
         <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 animate-pulse">
           <Video className="h-6 w-6 text-blue-600" />
         </div>
-        <h3 className="font-semibold text-gray-900 mb-2">Đang tải camera...</h3>
-        <p className="text-sm text-gray-600">Vui lòng cho phép truy cập camera khi được hỏi</p>
+        <h3 className="font-semibold text-gray-900 mb-2">Loading camera...</h3>
+        <p className="text-sm text-gray-600">Please allow camera access when prompted</p>
       </div>
     )
   }
@@ -270,8 +270,8 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
         <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
           <Video className="h-6 w-6 text-red-600" />
         </div>
-        <h3 className="font-semibold text-gray-900 mb-2">Không thể truy cập camera</h3>
-        <p className="text-sm text-gray-600 mb-4 whitespace-pre-line">{error || "Vui lòng cấp quyền truy cập camera trong trình duyệt"}</p>
+        <h3 className="font-semibold text-gray-900 mb-2">Unable to access camera</h3>
+        <p className="text-sm text-gray-600 mb-4 whitespace-pre-line">{error || "Please grant camera permission in browser settings"}</p>
         <div className="space-y-2">
           <button
             onClick={async () => {
@@ -290,9 +290,9 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
                 setError(null)
               } catch (err: any) {
                 if (err.name === 'NotAllowedError') {
-                  setError("Quyền bị từ chối. Vui lòng:\n1. Click vào icon khóa ở thanh địa chỉ\n2. Cho phép camera\n3. Refresh trang")
+                  setError("Permission denied. Please:\n1. Click the lock icon in the address bar\n2. Allow camera access\n3. Refresh the page")
                 } else {
-                  setError(err.message || "Không thể truy cập camera")
+                  setError(err.message || "Unable to access camera")
                 }
                 setHasPermission(false)
               } finally {
@@ -301,13 +301,13 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
             }}
             className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-2.5 font-semibold text-white shadow-md hover:shadow-lg transition-all"
           >
-            Thử lại
+            Try Again
           </button>
           <button
             onClick={() => window.location.reload()}
             className="block w-full mt-2 text-sm text-gray-600 hover:text-gray-900 underline"
           >
-            Tải lại trang
+            Reload Page
           </button>
         </div>
       </div>
@@ -352,7 +352,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Video className="h-5 w-5" />
-                  Bắt đầu quay
+                  Start Recording
                 </button>
               ) : (
                 <button
@@ -360,7 +360,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all"
                 >
                   <Square className="h-5 w-5" />
-                  Dừng quay
+                  Stop Recording
                 </button>
               )}
             </>
@@ -371,14 +371,14 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all"
               >
                 <Upload className="h-5 w-5" />
-                Sử dụng video này
+                Use This Video
               </button>
               <button
                 onClick={resetRecording}
                 className="flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-all"
               >
                 <RotateCcw className="h-5 w-5" />
-                Quay lại
+                Record Again
               </button>
               <a
                 href={recordedUrl}
@@ -386,7 +386,7 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
                 className="flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-all"
               >
                 <Download className="h-5 w-5" />
-                Tải xuống
+                Download
               </a>
             </>
           )}
@@ -396,8 +396,8 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
         <div className="mt-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
           <p className="text-xs text-gray-600">
             {!recordedUrl
-              ? "💡 Đặt camera để có thể nhìn thấy toàn bộ cú swing của bạn. Nhấn 'Bắt đầu quay' khi sẵn sàng."
-              : "✅ Video đã được ghi lại. Bạn có thể xem lại, tải xuống hoặc sử dụng để phân tích."}
+              ? "Position the camera to see your entire swing. Press 'Start Recording' when ready."
+              : "Video recorded successfully. You can review, download, or use it for analysis."}
           </p>
         </div>
       </div>

@@ -34,7 +34,7 @@ export default function ModeSwitch({ mode, setMode }: ModeSwitchProps) {
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              <span>⛳ Player</span>
+              <span>Player</span>
             </button>
             <button
               onClick={() => setMode("coach")}
@@ -44,7 +44,7 @@ export default function ModeSwitch({ mode, setMode }: ModeSwitchProps) {
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              <span>🎯 Coach</span>
+              <span>Coach</span>
             </button>
           </div>
 

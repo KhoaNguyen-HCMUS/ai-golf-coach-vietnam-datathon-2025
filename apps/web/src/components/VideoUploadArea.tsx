@@ -81,7 +81,7 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
               }}
               className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              Thay đổi
+              Change
             </button>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
               }`}
             >
               <Video className="h-4 w-4" />
-              Quay Video
+              Record Video
             </button>
           </div>
 
