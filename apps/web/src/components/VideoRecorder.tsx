@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Video, Square, RotateCcw, Download, Upload } from 'lucide-react';
+import { sendStartCommand, sendStopCommand, sendStopNoVideoCommand } from '../services/mqtt.service';
 
 interface VideoRecorderProps {
   onRecordComplete: (file: File) => void;
@@ -16,6 +17,9 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [recordingFormat, setRecordingFormat] = useState<string>('');
+  const [isSendingStartCommand, setIsSendingStartCommand] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [isSendingStopNoVideo, setIsSendingStopNoVideo] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -172,13 +176,28 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
     return ''; // Browser will choose default
   };
 
-  const startRecording = () => {
+  const startRecording = async () => {
     if (!streamRef.current) {
       setError('Camera is not ready');
       return;
     }
 
     try {
+      // Send START command to MQTT server
+      setIsSendingStartCommand(true);
+      setError(null);
+      
+      try {
+        await sendStartCommand();
+        console.log('MQTT START command sent successfully');
+      } catch (mqttError: any) {
+        console.error('Failed to send MQTT START command:', mqttError);
+        // Continue with recording even if MQTT command fails
+        setError(`Warning: Could not connect to MQTT server. ${mqttError.message}`);
+      } finally {
+        setIsSendingStartCommand(false);
+      }
+
       chunksRef.current = [];
       const mimeType = getSupportedMimeType();
       const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
@@ -250,46 +269,80 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
     }
   };
 
-  const resetRecording = () => {
+  const resetRecording = async () => {
+    // Send STOP NO VIDEO command
+    setIsSendingStopNoVideo(true);
+    setError(null);
+    
+    try {
+      await sendStopNoVideoCommand();
+      console.log('MQTT STOP (no video) command sent successfully');
+    } catch (mqttError: any) {
+      console.error('Failed to send MQTT STOP (no video) command:', mqttError);
+      // Continue with reset even if MQTT command fails
+      setError(`Warning: Could not send stop command. ${mqttError.message}`);
+    } finally {
+      setIsSendingStopNoVideo(false);
+    }
+
+    // Reset recording state
     if (recordedUrl) {
       URL.revokeObjectURL(recordedUrl);
     }
     setRecordedBlob(null);
     setRecordedUrl(null);
     setRecordingTime(0);
-    setError(null);
     // Restart preview if stream is still available
     if (streamRef.current && videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
     }
   };
 
-  const handleUseVideo = () => {
-    if (recordedBlob) {
-      // Get the actual mime type from the blob
-      const mimeType = recordedBlob.type || 'video/webm';
-      // Determine extension based on mime type
-      let extension = 'webm';
-      if (mimeType.includes('mp4')) {
-        extension = 'mp4';
-      } else if (mimeType.includes('webm')) {
-        extension = 'webm';
-      }
+  const handleUseVideo = async () => {
+    if (!recordedBlob) {
+      return;
+    }
 
-      // Convert blob to File
-      const file = new File([recordedBlob], `swing_${Date.now()}.${extension}`, {
-        type: mimeType,
-      });
-      console.log(
-        'Video file created:',
-        file.name,
-        'Type:',
-        mimeType,
-        'Size:',
-        (file.size / 1024 / 1024).toFixed(2),
-        'MB'
-      );
+    // Get the actual mime type from the blob
+    const mimeType = recordedBlob.type || 'video/webm';
+    // Determine extension based on mime type
+    let extension = 'webm';
+    if (mimeType.includes('mp4')) {
+      extension = 'mp4';
+    } else if (mimeType.includes('webm')) {
+      extension = 'webm';
+    }
+
+    // Convert blob to File
+    const file = new File([recordedBlob], `swing_${Date.now()}.${extension}`, {
+      type: mimeType,
+    });
+    console.log(
+      'Video file created:',
+      file.name,
+      'Type:',
+      mimeType,
+      'Size:',
+      (file.size / 1024 / 1024).toFixed(2),
+      'MB'
+    );
+
+    // Send STOP command with video file
+    setIsUploadingVideo(true);
+    setError(null);
+
+    try {
+      const response = await sendStopCommand(file);
+      console.log('Video uploaded successfully:', response);
+      // Call onRecordComplete after successful upload
       onRecordComplete(file);
+    } catch (uploadError: any) {
+      console.error('Failed to upload video:', uploadError);
+      setError(`Failed to upload video: ${uploadError.message}`);
+      // Still call onRecordComplete even if upload fails (user can retry later)
+      onRecordComplete(file);
+    } finally {
+      setIsUploadingVideo(false);
     }
   };
 
@@ -399,11 +452,20 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
               {!isRecording ? (
                 <button
                   onClick={startRecording}
-                  disabled={!hasPermission}
+                  disabled={!hasPermission || isSendingStartCommand}
                   className='flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
                 >
-                  <Video className='h-5 w-5' />
-                  Start Recording
+                  {isSendingStartCommand ? (
+                    <>
+                      <div className='h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Video className='h-5 w-5' />
+                      Start Recording
+                    </>
+                  )}
                 </button>
               ) : (
                 <button
@@ -419,17 +481,37 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
             <>
               <button
                 onClick={handleUseVideo}
-                className='flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all'
+                disabled={isUploadingVideo}
+                className='flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-3 font-semibold text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
               >
-                <Upload className='h-5 w-5' />
-                Use This Video
+                {isUploadingVideo ? (
+                  <>
+                    <div className='h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className='h-5 w-5' />
+                    Use This Video
+                  </>
+                )}
               </button>
               <button
                 onClick={resetRecording}
-                className='flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-all'
+                disabled={isSendingStopNoVideo}
+                className='flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
               >
-                <RotateCcw className='h-5 w-5' />
-                Record Again
+                {isSendingStopNoVideo ? (
+                  <>
+                    <div className='h-5 w-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin'></div>
+                    Stopping...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className='h-5 w-5' />
+                    Record Again
+                  </>
+                )}
               </button>
               <a
                 href={recordedUrl}
