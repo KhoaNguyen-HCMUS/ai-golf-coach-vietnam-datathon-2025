@@ -93,11 +93,15 @@ export default function PlayerMode() {
           <h1 className='text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent'>
             The AI Lab
           </h1>
-          <p className='mt-2 text-gray-600'>Upload your swing and get instant AI-powered biomechanics analysis</p>
+          <p className='mt-2 text-gray-600'>Upload or record your swing and get instant AI-powered biomechanics analysis</p>
         </div>
 
         {/* Video Upload Section */}
-        <VideoUploadArea videoFile={videoFile} onUpload={handleVideoUpload} />
+        <VideoUploadArea 
+          videoFile={videoFile} 
+          onUpload={handleVideoUpload}
+          onReset={() => setVideoFile(null)}
+        />
 
         {/* Chat Interface */}
         <ChatInterface
