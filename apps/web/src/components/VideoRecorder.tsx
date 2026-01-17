@@ -141,6 +141,18 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
     };
   }, [recordedUrl]);
 
+  // Clear webcam srcObject when showing recorded video (but keep stream alive for next recording)
+  useEffect(() => {
+    if (recordedUrl && videoRef.current && videoRef.current.srcObject) {
+      // Clear srcObject to show recorded video instead of webcam
+      // Don't stop the stream tracks, we'll need them for next recording
+      videoRef.current.srcObject = null;
+    } else if (!recordedUrl && videoRef.current && streamRef.current) {
+      // Restore webcam preview when no recorded video
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [recordedUrl]);
+
   const getSupportedMimeType = () => {
     const mp4Types = [
       'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
@@ -232,6 +244,12 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
         if (timerRef.current) {
           clearInterval(timerRef.current);
         }
+        
+        // Stop webcam stream and clear srcObject to show recorded video
+        if (videoRef.current && videoRef.current.srcObject) {
+          videoRef.current.srcObject = null;
+        }
+        
         console.log('Recording stopped. Format:', mimeType, 'Size:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
       };
 
@@ -292,9 +310,15 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
     setRecordedBlob(null);
     setRecordedUrl(null);
     setRecordingTime(0);
-    // Restart preview if stream is still available
+    
+    // Restart webcam preview if stream is still available
     if (streamRef.current && videoRef.current) {
+      // Make sure srcObject is set to the stream
       videoRef.current.srcObject = streamRef.current;
+      // Play the video to show webcam feed
+      videoRef.current.play().catch((err) => {
+        console.error('Error playing video after reset:', err);
+      });
     }
   };
 
@@ -424,10 +448,21 @@ export default function VideoRecorder({ onRecordComplete }: VideoRecorderProps) 
         {/* Video Preview/Recording */}
         <div className='relative mb-4 rounded-xl overflow-hidden bg-black aspect-video'>
           {recordedUrl ? (
-            <video src={recordedUrl} controls className='w-full h-full object-contain' />
+            <video 
+              src={recordedUrl} 
+              controls 
+              className='w-full h-full object-contain'
+              key={recordedUrl} // Force re-render when URL changes
+            />
           ) : (
             <>
-              <video ref={videoRef} autoPlay muted playsInline className='w-full h-full object-cover' />
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                className='w-full h-full object-cover'
+              />
               {isRecording && (
                 <div className='absolute top-4 left-4 flex items-center gap-2 bg-red-500 text-white px-3 py-1.5 rounded-full'>
                   <div className='h-2 w-2 bg-white rounded-full animate-pulse'></div>
