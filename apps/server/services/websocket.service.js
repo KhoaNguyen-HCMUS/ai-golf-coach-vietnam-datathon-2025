@@ -41,17 +41,26 @@ export const initWebSocket = (server) => {
     
     console.log('[WebSocket] Ready')
 }
-
 export const sendToClient = (timestamp, message) => {
+    console.log(`[WS] Trying to send to timestamp: ${timestamp}`)
+    console.log(`[WS] Available timestamps:`, Array.from(clients.keys()))
+    
     const list = clients.get(timestamp)
-    if (!list || list.length === 0) return
+    console.log(`[WS] Found ${list?.length || 0} clients for ${timestamp}`)
+    
+    if (!list || list.length === 0) {
+        console.log(`[WS] NO CLIENTS for timestamp ${timestamp}`)
+        return
+    }
     
     const msg = JSON.stringify(message)
+    let sentCount = 0
     list.forEach(ws => {
         if (ws.readyState === 1) {
             ws.send(msg)
+            sentCount++
         }
     })
     
-    console.log(`[WS] Sent to ${timestamp}: ${list.length} clients`)
+    console.log(`[WS] Sent to ${timestamp}: ${sentCount}/${list.length} clients`)
 }

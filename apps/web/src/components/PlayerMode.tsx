@@ -14,7 +14,7 @@ export default function PlayerMode() {
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [feedbackHTML, setFeedbackHTML] = useState<string | null>(null);
   const [pendingTimestamp, setPendingTimestamp] = useState<string | null>(null);
-  
+
   // WebSocket connection
   const { isConnected, subscribe, results, error: wsError } = useGolfWebSocket();
   const [chatMessages, setChatMessages] = useState<Message[]>([
@@ -42,26 +42,34 @@ export default function PlayerMode() {
     setIsProcessingVideo(true);
 
     try {
-      // Step 1: Upload video via API
-      const response = await sendStopCommand(file);
-      console.log('✓ Video uploaded. Full response:', JSON.stringify(response, null, 2));
-      console.log('✓ Response keys:', Object.keys(response));
-      console.log('✓ Response.timestamp:', response.timestamp);
-      console.log('✓ Response type:', typeof response);
+      // Step 1: Generate timestamp FIRST
+      const timestamp = Date.now().toString();
+      console.log(`📅 Generated timestamp: ${timestamp}`);
 
-      // Step 2: Subscribe to WebSocket session if timestamp is available
-      if (response.timestamp) {
-        if (isConnected) {
-          // Subscribe immediately if connected
-          subscribe(response.timestamp);
-        } else {
-          // Store timestamp and wait for connection
-          console.warn('⚠ WebSocket not connected. Will subscribe when connected...');
-          setPendingTimestamp(response.timestamp);
-        }
+      // Step 2: Subscribe BEFORE uploading
+      if (isConnected) {
+        subscribe(timestamp);
+        console.log(`✓ Subscribed with timestamp: ${timestamp}`);
       } else {
-        console.warn('⚠ No timestamp in response. Cannot subscribe to analysis.');
-        setIsProcessingVideo(false);
+        console.warn(`⚠ WebSocket not connected. Storing timestamp for later...`);
+        setPendingTimestamp(timestamp);
+      }
+
+      // Step 3: Rename file with timestamp
+      const renamedFile = new File(
+        [file],
+        `video_${timestamp}_${file.name}`,
+        { type: file.type, lastModified: file.lastModified }
+      );
+      console.log(`✓ Renamed file to: ${renamedFile.name}`);
+
+      // Step 4: Upload video with renamed file
+      const response = await sendStopCommand(renamedFile);
+      console.log(`✓ Video uploaded. Response timestamp:`, response.timestamp);
+      console.log(`✓ Expected timestamp: ${timestamp}`);
+
+      if (response.timestamp !== timestamp) {
+        console.warn(`⚠ Timestamp mismatch! Response: ${response.timestamp}, Expected: ${timestamp}`);
       }
     } catch (error: any) {
       console.error('✗ Failed to upload video:', error);
@@ -145,8 +153,8 @@ export default function PlayerMode() {
         </div>
 
         {/* Video Upload Section */}
-        <VideoUploadArea 
-          videoFile={videoFile} 
+        <VideoUploadArea
+          videoFile={videoFile}
           onUpload={handleVideoUpload}
           onReset={() => setVideoFile(null)}
         />
