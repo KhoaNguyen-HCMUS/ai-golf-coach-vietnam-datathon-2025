@@ -9,25 +9,18 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "SwingAI Lab - AI-Powered Golf Swing Analysis",
+  title: "SwingAI - AI-Powered Golf Swing Analysis",
   description: "Master your golf swing with real-time AI biomechanics analysis and expert coaching feedback",
   generator: "v0.app",
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
+        url: "/logo.png",
+        type: "image/png",
       },
     ],
-    apple: "/apple-icon.png",
+    apple: "/logo_circle.png",
+    shortcut: "/logo_circle.png",
   },
 }
 

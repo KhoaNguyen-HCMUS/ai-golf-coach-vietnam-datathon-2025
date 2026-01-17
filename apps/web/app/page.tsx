@@ -34,7 +34,9 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3 group">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-200 group-hover:shadow-blue-300 transition-all"></div>
+              <div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-blue-200 group-hover:shadow-blue-300 transition-all">
+                <img src="/logo.png" alt="SwingAI Logo" className="h-full w-full object-contain" />
+              </div>
               <div>
                 <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                   SwingAI
@@ -291,11 +293,10 @@ export default function LandingPage() {
             ].map((plan, i) => (
               <div
                 key={i}
-                className={`group relative rounded-2xl border p-8 transition-all duration-300 ${
-                  plan.popular
-                    ? "border-blue-400/70 bg-gradient-to-b from-white to-blue-50/50 ring-2 ring-blue-200/50 shadow-lg shadow-blue-100/50"
-                    : "border-gray-200/70 bg-white hover:border-gray-300 hover:shadow-md hover:shadow-gray-100"
-                }`}
+                className={`group relative rounded-2xl border p-8 transition-all duration-300 ${plan.popular
+                  ? "border-blue-400/70 bg-gradient-to-b from-white to-blue-50/50 ring-2 ring-blue-200/50 shadow-lg shadow-blue-100/50"
+                  : "border-gray-200/70 bg-white hover:border-gray-300 hover:shadow-md hover:shadow-gray-100"
+                  }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 px-4 py-1.5 text-xs font-bold text-white shadow-lg shadow-blue-200">
@@ -317,11 +318,10 @@ export default function LandingPage() {
                 </div>
 
                 <button
-                  className={`w-full rounded-xl font-semibold py-3.5 mb-8 transition-all active:scale-95 ${
-                    plan.popular
-                      ? "bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-200/40 hover:shadow-blue-300/60"
-                      : "border border-gray-300 text-gray-900 hover:bg-gray-50 bg-white"
-                  }`}
+                  className={`w-full rounded-xl font-semibold py-3.5 mb-8 transition-all active:scale-95 ${plan.popular
+                    ? "bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-200/40 hover:shadow-blue-300/60"
+                    : "border border-gray-300 text-gray-900 hover:bg-gray-50 bg-white"
+                    }`}
                 >
                   {plan.popular ? "Start Now" : plan.price === "Custom" ? "Contact Sales" : "Get Started"}
                 </button>
