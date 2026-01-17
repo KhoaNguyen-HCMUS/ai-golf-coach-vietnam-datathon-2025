@@ -9,8 +9,6 @@ import { sendStopCommand, analyzeVideo } from '../services/mqtt.service';
 import { askChatbot } from '../services/chatbot.service';
 import type { Message } from '../types';
 
-const CHAT_STORAGE_KEY = 'golf-coach-chat-history';
-
 export default function PlayerMode() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<'record' | 'upload'>('upload'); // Track which mode was used
@@ -35,44 +33,18 @@ export default function PlayerMode() {
   // WebSocket connection
   const { isConnected, subscribe, results, error: wsError } = useGolfWebSocket();
 
-  // Load messages from localStorage on mount
-  const loadMessagesFromStorage = (): Message[] => {
-    try {
-      const stored = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Convert timestamp strings back to Date objects
-        return parsed.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to load messages from localStorage:', error);
-    }
-    // Return default welcome message if no stored messages
-    return [
-      {
-        id: '1',
-        role: 'assistant',
-        content: "Welcome to SwingAI Lab! Ask me anything about your golf swing and I'll help you improve your form.",
-        timestamp: new Date(),
-      },
-    ];
-  };
-
-  const [chatMessages, setChatMessages] = useState<Message[]>(loadMessagesFromStorage);
+  // Initialize with welcome message only (no localStorage)
+  const [chatMessages, setChatMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content: "Welcome to SwingAI Lab! Ask me anything about your golf swing and I'll help you improve your form.",
+      timestamp: new Date(),
+    },
+  ]);
+  const [analysisContext, setAnalysisContext] = useState<string | null>(null); // Store analysis as context/label
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatInterfaceRef = useRef<HTMLDivElement>(null);
-
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatMessages));
-    } catch (error) {
-      console.error('Failed to save messages to localStorage:', error);
-    }
-  }, [chatMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -196,10 +168,19 @@ export default function PlayerMode() {
     setIsAnalyzing(true);
 
     try {
+      // Build history: start with analysis context if available, then last 10 messages
+      const history: string[] = [];
+
+      // Add analysis context as first item in history if available
+      if (analysisContext) {
+        const contextText = extractTextFromHTML(analysisContext);
+        history.push(contextText);
+      }
+
       // Get last 10 messages (excluding the current user message) for history
-      // Convert to array of strings (both user and assistant messages)
       const previousMessages = chatMessages.slice(-10);
-      const history = previousMessages.length > 0 ? previousMessages.map((msg) => msg.content) : []; // Empty array if no previous messages
+      const messageHistory = previousMessages.map((msg) => msg.content);
+      history.push(...messageHistory);
 
       console.log('📤 Sending to chatbot:', { history, message: text });
 
@@ -236,12 +217,7 @@ export default function PlayerMode() {
       timestamp: new Date(),
     };
     setChatMessages([welcomeMessage]);
-    // Clear localStorage
-    try {
-      localStorage.removeItem(CHAT_STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to clear localStorage:', error);
-    }
+    setAnalysisContext(null); // Clear analysis context
   };
 
   // Extract text from HTML (remove HTML tags)
@@ -259,30 +235,10 @@ export default function PlayerMode() {
       .trim();
   };
 
-  // Handle consult button click - add analysis to chat and scroll to chat
+  // Handle consult button click - set analysis as context/label and scroll to chat
   const handleConsult = (analysisHTML: string) => {
-    // Extract text from HTML
-    const analysisText = extractTextFromHTML(analysisHTML);
-
-    // Create assistant message with the analysis
-    const analysisMessage: Message = {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: analysisHTML, // Keep HTML for rendering
-      timestamp: new Date(),
-    };
-
-    // Add to chat messages
-    setChatMessages((prev) => {
-      // Check if welcome message exists and remove it if it's the default one
-      const filtered = prev.filter(
-        (msg) =>
-          msg.id !== '1' ||
-          msg.content !==
-            "Welcome to SwingAI Lab! Ask me anything about your golf swing and I'll help you improve your form."
-      );
-      return [...filtered, analysisMessage];
-    });
+    // Set analysis as context (label) instead of adding as message
+    setAnalysisContext(analysisHTML);
 
     // Scroll to chat interface after a short delay to ensure DOM is updated
     setTimeout(() => {
@@ -335,6 +291,8 @@ export default function PlayerMode() {
             onSendMessage={handleSendMessage}
             onClearMessages={handleClearMessages}
             messagesEndRef={messagesEndRef}
+            analysisContext={analysisContext}
+            onClearContext={() => setAnalysisContext(null)}
           />
         </div>
       </div>

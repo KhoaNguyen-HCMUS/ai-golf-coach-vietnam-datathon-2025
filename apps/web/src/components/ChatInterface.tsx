@@ -4,7 +4,7 @@ import type React from 'react';
 
 import { useState } from 'react';
 import type { Message } from '../types';
-import { Send, Trash2 } from 'lucide-react';
+import { Send, Trash2, X } from 'lucide-react';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -12,6 +12,8 @@ interface ChatInterfaceProps {
   onSendMessage: (message: string) => void;
   onClearMessages?: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  analysisContext?: string | null;
+  onClearContext?: () => void;
 }
 
 export default function ChatInterface({
@@ -20,6 +22,8 @@ export default function ChatInterface({
   onSendMessage,
   onClearMessages,
   messagesEndRef,
+  analysisContext,
+  onClearContext,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
 
@@ -50,6 +54,38 @@ export default function ChatInterface({
 
       <div className='scrollbar-hidden flex-1 overflow-y-auto p-4 sm:p-6'>
         <div className='space-y-4'>
+          {/* Analysis Context Label */}
+          {analysisContext && (
+            <div className='mb-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl'>
+              <div className='flex items-start justify-between gap-3'>
+                <div className='flex-1'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <span className='text-xs font-semibold text-blue-700 uppercase tracking-wide'>
+                      Analysis Context
+                    </span>
+                  </div>
+                  <div
+                    className='text-sm text-gray-700 prose prose-sm max-w-none'
+                    dangerouslySetInnerHTML={{ __html: analysisContext }}
+                    style={{
+                      fontSize: '0.875rem',
+                      lineHeight: '1.6',
+                    }}
+                  />
+                </div>
+                {onClearContext && (
+                  <button
+                    onClick={onClearContext}
+                    className='flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors'
+                    title='Clear analysis context'
+                  >
+                    <X className='h-4 w-4' />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
