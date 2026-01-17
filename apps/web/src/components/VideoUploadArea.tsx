@@ -30,6 +30,7 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
     if (file?.type.startsWith("video/")) {
+      setMode('upload')
       onUpload(file, 'upload')
     }
   }
@@ -37,11 +38,13 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.currentTarget.files?.[0]
     if (file) {
+      setMode('upload')
       onUpload(file, 'upload')
     }
   }
 
   const handleRecordComplete = (file: File) => {
+    setMode('record')
     onUpload(file, 'record')
   }
 
@@ -62,6 +65,43 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
 
   return (
     <div className="mb-6">
+      <div className="space-y-4">
+        {/* Mode Toggle - Always visible */}
+        <div className="flex gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
+          <button
+            onClick={() => {
+              if (videoFile) {
+                onReset?.();
+              }
+              setMode("upload");
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
+              mode === "upload"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Upload className="h-4 w-4" />
+            Upload Video
+          </button>
+          <button
+            onClick={() => {
+              if (videoFile) {
+                onReset?.();
+              }
+              setMode("record");
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
+              mode === "record"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Video className="h-4 w-4" />
+            Record Video
+          </button>
+        </div>
+
       {videoFile ? (
         <div className="card-base p-4 sm:p-6 bg-blue-50/50 border border-blue-200/50 rounded-2xl space-y-4">
           <div className="flex items-center justify-between gap-3">
@@ -92,7 +132,6 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
             <button
               onClick={() => {
                 onReset?.()
-                setMode("upload")
               }}
               className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -115,33 +154,7 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Mode Toggle */}
-          <div className="flex gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
-            <button
-              onClick={() => setMode("upload")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
-                mode === "upload"
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Upload className="h-4 w-4" />
-              Upload Video
-            </button>
-            <button
-              onClick={() => setMode("record")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
-                mode === "record"
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Video className="h-4 w-4" />
-              Record Video
-            </button>
-          </div>
-
+        <>
           {/* Upload Mode */}
           {mode === "upload" && (
             <label
@@ -165,8 +178,9 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
 
           {/* Record Mode */}
           {mode === "record" && <VideoRecorder onRecordComplete={handleRecordComplete} />}
-        </div>
+        </>
       )}
+      </div>
     </div>
   )
 }

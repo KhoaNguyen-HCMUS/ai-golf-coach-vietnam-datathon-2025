@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Video, Loader2, Download } from "lucide-react"
+import { Video, Loader2, Download, MessageCircle } from "lucide-react"
 import { useEffect } from "react"
 
 interface HitResult {
@@ -21,6 +21,8 @@ interface VideoFeedbackSectionProps {
   isProcessing: boolean
   isConnected?: boolean
   hitResults: HitResult[];
+  uploadAnalysisHTML?: string | null;
+  onConsult?: (analysisHTML: string) => void;
 }
 
 export default function VideoFeedbackSection({
@@ -29,6 +31,7 @@ export default function VideoFeedbackSection({
   isConnected = true,
   hitResults = [],
   uploadAnalysisHTML = null,
+  onConsult,
 }: VideoFeedbackSectionProps) {
   // Debug logging
   useEffect(() => {
@@ -110,6 +113,18 @@ export default function VideoFeedbackSection({
             {/* Upload file analysis (no WebSocket) */}
             {uploadAnalysisHTML && !isProcessing && (
               <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-900">Analysis Results</h4>
+                  {onConsult && (
+                    <button
+                      onClick={() => onConsult(uploadAnalysisHTML)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all shadow-sm hover:shadow-md"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Consult
+                    </button>
+                  )}
+                </div>
                 <div
                   className="analysis-html"
                   dangerouslySetInnerHTML={{ __html: uploadAnalysisHTML }}
@@ -166,6 +181,18 @@ export default function VideoFeedbackSection({
                     {/* Feedback HTML */}
                     {result.analysisHTML && (
                       <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">Hit #{result.hitIndex} Analysis</h4>
+                          {onConsult && (
+                            <button
+                              onClick={() => onConsult(result.analysisHTML!)}
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all shadow-sm hover:shadow-md"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              Consult
+                            </button>
+                          )}
+                        </div>
                         <div
                           className="analysis-html"
                           dangerouslySetInnerHTML={{ __html: result.analysisHTML }}
