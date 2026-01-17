@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Upload, Video } from "lucide-react"
 import VideoRecorder from "./VideoRecorder"
 
 interface VideoUploadAreaProps {
   videoFile: File | null
-  onUpload: (file: File) => void
+  onUpload: (file: File, mode: 'record' | 'upload') => void
   onReset?: () => void
 }
 
@@ -30,25 +30,40 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
     if (file?.type.startsWith("video/")) {
-      onUpload(file)
+      onUpload(file, 'upload')
     }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.currentTarget.files?.[0]
     if (file) {
-      onUpload(file)
+      onUpload(file, 'upload')
     }
   }
 
   const handleRecordComplete = (file: File) => {
-    onUpload(file)
+    onUpload(file, 'record')
   }
+
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+
+  // Create preview URL when videoFile changes
+  useEffect(() => {
+    if (videoFile) {
+      const url = URL.createObjectURL(videoFile);
+      setVideoPreviewUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setVideoPreviewUrl(null);
+    }
+  }, [videoFile]);
 
   return (
     <div className="mb-6">
       {videoFile ? (
-        <div className="card-base p-4 sm:p-6 bg-blue-50/50 border border-blue-200/50 rounded-2xl">
+        <div className="card-base p-4 sm:p-6 bg-blue-50/50 border border-blue-200/50 rounded-2xl space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1">
               <div className="flex-shrink-0">
@@ -84,6 +99,20 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
               Change
             </button>
           </div>
+          
+          {/* Video Preview */}
+          {videoPreviewUrl && mode === "upload" && (
+            <div className="mt-4">
+              <video
+                src={videoPreviewUrl}
+                controls
+                className="w-full rounded-lg"
+                style={{ maxHeight: '400px' }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

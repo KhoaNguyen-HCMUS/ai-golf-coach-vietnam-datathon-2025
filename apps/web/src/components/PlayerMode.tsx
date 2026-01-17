@@ -5,11 +5,12 @@ import ChatInterface from './ChatInterface';
 import VideoUploadArea from './VideoUploadArea';
 import VideoFeedbackSection from './VideoFeedbackSection';
 import { useGolfWebSocket } from '../hooks/useGolfWebSocket';
-import { sendStopCommand } from '../services/mqtt.service';
+import { sendStopCommand, analyzeVideo } from '../services/mqtt.service';
 import type { Message } from '../types';
 
 export default function PlayerMode() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<'record' | 'upload'>('upload'); // Track which mode was used
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [pendingTimestamp, setPendingTimestamp] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export default function PlayerMode() {
       size: number;
     };
   }>>([]);
+  const [uploadAnalysisHTML, setUploadAnalysisHTML] = useState<string | null>(null); // For upload file analysis
   
   // WebSocket connection
   const { isConnected, subscribe, results, error: wsError } = useGolfWebSocket();
@@ -46,43 +48,58 @@ export default function PlayerMode() {
     scrollToBottom();
   }, [chatMessages]);
 
-  const handleVideoUpload = async (file: File) => {
+  const handleVideoUpload = async (file: File, mode: 'record' | 'upload' = 'upload') => {
     setVideoFile(file);
+    setUploadMode(mode);
     setHitResults([]); // Clear previous results
+    setUploadAnalysisHTML(null); // Clear previous upload analysis
     setIsProcessingVideo(true);
 
     try {
-      // Step 1: Generate timestamp FIRST
-      const timestamp = Date.now().toString();
-      console.log(`📅 Generated timestamp: ${timestamp}`);
-
-      // Step 2: Subscribe BEFORE uploading
-      if (isConnected) {
-        subscribe(timestamp);
-        console.log(`✓ Subscribed with timestamp: ${timestamp}`);
+      if (mode === 'upload') {
+        // Upload file mode: Use /api/analyze endpoint
+        console.log('📤 Uploading file for analysis...');
+        const response = await analyzeVideo(file);
+        console.log('✓ Analysis completed:', response);
+        
+        if (response.data) {
+          setUploadAnalysisHTML(response.data);
+        }
+        setIsProcessingVideo(false);
       } else {
-        console.warn(`⚠ WebSocket not connected. Storing timestamp for later...`);
-        setPendingTimestamp(timestamp);
-      }
+        // Record mode: Use WebSocket flow
+        // Step 1: Generate timestamp FIRST
+        const timestamp = Date.now().toString();
+        console.log(`📅 Generated timestamp: ${timestamp}`);
 
-      // Step 3: Rename file with timestamp
-      const renamedFile = new File(
-        [file],
-        `video_${timestamp}_${file.name}`,
-        { type: file.type, lastModified: file.lastModified }
-      );
-      console.log(`✓ Renamed file to: ${renamedFile.name}`);
+        // Step 2: Subscribe BEFORE uploading
+        if (isConnected) {
+          subscribe(timestamp);
+          console.log(`✓ Subscribed with timestamp: ${timestamp}`);
+        } else {
+          console.warn(`⚠ WebSocket not connected. Storing timestamp for later...`);
+          setPendingTimestamp(timestamp);
+        }
 
-      // Step 4: Upload video with renamed file
-      const response = await sendStopCommand(renamedFile);
-      console.log(`✓ Video uploaded. Response timestamp:`, response.timestamp);
-      console.log(`✓ Expected timestamp: ${timestamp}`);
+        // Step 3: Rename file with timestamp
+        const renamedFile = new File(
+          [file],
+          `video_${timestamp}_${file.name}`,
+          { type: file.type, lastModified: file.lastModified }
+        );
+        console.log(`✓ Renamed file to: ${renamedFile.name}`);
 
-      if (response.timestamp !== timestamp) {
-        console.warn(`⚠ Timestamp mismatch! Response: ${response.timestamp}, Expected: ${timestamp}`);
+        // Step 4: Upload video with renamed file
+        const response = await sendStopCommand(renamedFile);
+        console.log(`✓ Video uploaded. Response timestamp:`, response.timestamp);
+        console.log(`✓ Expected timestamp: ${timestamp}`);
+
+        if (response.timestamp !== timestamp) {
+          console.warn(`⚠ Timestamp mismatch! Response: ${response.timestamp}, Expected: ${timestamp}`);
+        }
       }
     } catch (error: any) {
-      console.error('✗ Failed to upload video:', error);
+      console.error('✗ Failed to process video:', error);
       setIsProcessingVideo(false);
     }
   };
@@ -166,8 +183,12 @@ export default function PlayerMode() {
         {/* Video Upload Section */}
         <VideoUploadArea
           videoFile={videoFile}
-          onUpload={handleVideoUpload}
-          onReset={() => setVideoFile(null)}
+          onUpload={(file, mode) => handleVideoUpload(file, mode)}
+          onReset={() => {
+            setVideoFile(null);
+            setHitResults([]);
+            setUploadAnalysisHTML(null);
+          }}
         />
 
         {/* Video Feedback Section - Top Half */}
@@ -176,7 +197,8 @@ export default function PlayerMode() {
             videoFileName={videoFile?.name || null}
             isProcessing={isProcessingVideo}
             isConnected={isConnected}
-            hitResults={hitResults}
+            hitResults={uploadMode === 'record' ? hitResults : []}
+            uploadAnalysisHTML={uploadMode === 'upload' ? uploadAnalysisHTML : null}
           />
         </div>
 

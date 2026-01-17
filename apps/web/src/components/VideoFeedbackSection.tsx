@@ -28,6 +28,7 @@ export default function VideoFeedbackSection({
   isProcessing,
   isConnected = true,
   hitResults = [],
+  uploadAnalysisHTML = null,
 }: VideoFeedbackSectionProps) {
   // Debug logging
   useEffect(() => {
@@ -106,7 +107,22 @@ export default function VideoFeedbackSection({
               </div>
             )}
 
-            {/* Render results in order: Video 1 -> Feedback 1 -> Video 2 -> Feedback 2 */}
+            {/* Upload file analysis (no WebSocket) */}
+            {uploadAnalysisHTML && !isProcessing && (
+              <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                <div
+                  className="analysis-html"
+                  dangerouslySetInnerHTML={{ __html: uploadAnalysisHTML }}
+                  style={{
+                    color: '#1f2937',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.6',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Render results in order: Video 1 -> Feedback 1 -> Video 2 -> Feedback 2 (WebSocket mode) */}
             {hitResults.length > 0 && !isProcessing && (
               <div className="space-y-6">
                 {hitResults.map((result) => (
@@ -167,7 +183,7 @@ export default function VideoFeedbackSection({
             )}
 
             {/* Empty State - Waiting for feedback */}
-            {hitResults.length === 0 && !isProcessing && (
+            {hitResults.length === 0 && !uploadAnalysisHTML && !isProcessing && (
               <div className="text-center py-8">
                 <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
                   <Video className="h-6 w-6 text-gray-400" />
