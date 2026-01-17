@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules
+.agent
 
 # next.js
 .next
@@ -32,3 +33,5 @@ data
 
 # model weights
 *.pt
+
+videos/

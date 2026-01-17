@@ -7,10 +7,14 @@
   "scripts": {
     "fe": "pnpm --filter=fe",
     "be": "pnpm --filter=be",
-    "dev": "pnpm -r --parallel dev"
+    "dev": "pnpm -r --parallel dev",
+    "setup:agent": "npx @vudovn/antigravity-kit init"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.26.2"
+  "packageManager": "pnpm@10.26.2",
+  "dependencies": {
+    "multer": "^2.0.2"
+  }
 }
