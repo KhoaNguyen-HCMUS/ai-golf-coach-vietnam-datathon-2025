@@ -1,78 +1,33 @@
 """
-FastAPI Application cho Golf Swing Prediction Service
+Golf Swing Prediction - Single Video Mode
+Input: 1 video file
+Output: Score + JSON với insights tiếng Việt
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uvicorn
-import os
-from pathlib import Path
-import tempfile
-import json
-import sys
-
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parent / "scripts"))
-
-# Import prediction modules
-from scripts.extract_features_biomech_augmented import GolfFeatureExtractorBiomech
-from scripts.feature_metadata import get_feature_info
-
 import numpy as np
+import os
 import joblib
-import pandas as pd
+import json
+import tempfile
+from extract_features_biomech_augmented import GolfFeatureExtractorBiomech
 
+# Config
+CONF_THRESHOLD = 0.5
+# Default YOLO pose model path - point to models folder
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_POSE_MODEL = os.path.join(_SCRIPT_DIR, "models", "yolov8m-pose.pt")
+POSE_MODEL_PATH = os.environ.get("YOLO_POSE_MODEL", _DEFAULT_POSE_MODEL)
 
-PORT = int(os.environ.get("PORT", 8000))
-HOST = os.environ.get("HOST", "0.0.0.0")
+# Feature metadata
+try:
+    from feature_metadata import get_feature_info
+except ImportError:
+    def get_feature_info(name):
+        return {"name": name, "description": "", "unit": "", "category": "Other"}
 
-app = FastAPI(
-    title="Golf Swing Prediction API",
-    description="API để predict handicap band từ skeleton data",
-    version="1.0.0",
-)
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-class HealthResponse(BaseModel):
-    """Response model cho health check."""
-
-    status: str
-    message: str
-
-
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "Golf Swing Prediction API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health",
-    }
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint."""
-    return HealthResponse(status="healthy", message="API is running")
-
-
-# ============================================================================
-# PREDICTION MODELS AND CLASSES
-# ============================================================================
 
 class GolfSwingPredictor:
-    """Predictor with feature insights."""
+    """Predictor with Vietnamese insights."""
     
     def __init__(self, model_path, scaler_path, metadata_path, stats_path=None):
         """Load model, scaler, metadata, and stats."""
@@ -130,7 +85,7 @@ class GolfSwingPredictor:
         return band_names.get(band_idx, "unknown")
 
     def generate_feature_insights(self, feature_values):
-        """Generate insights."""
+        """Generate Vietnamese insights."""
         if not self.stats:
             return {"strengths": [], "weaknesses": []}
         
@@ -184,12 +139,8 @@ def extract_skeleton_from_video(video_path, output_path):
     import torch
     from ultralytics import YOLO
     
-    CONF_THRESHOLD = 0.5
-    model_dir = Path(__file__).parent / "scripts" / "models"
-    pose_model_path = model_dir / "yolov8m-pose.pt"
-    
     device = 0 if torch.cuda.is_available() else 'cpu'
-    pose_model = YOLO(str(pose_model_path))
+    pose_model = YOLO(POSE_MODEL_PATH)
     
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -210,13 +161,17 @@ def extract_skeleton_from_video(video_path, output_path):
             if hasattr(kpts, 'data') and kpts.data is not None and len(kpts.data) > 0:
                 kpt_data = kpts.data[0].cpu().numpy()
                 
+                # Handle both (17,3) and (17,4) formats
                 if kpt_data.shape[1] == 3:
+                    # YOLO format: [x, y, conf] - need to add visibility column
                     current_frame_landmarks[:len(kpt_data), :3] = kpt_data
-                    current_frame_landmarks[:len(kpt_data), 3] = 1.0
+                    current_frame_landmarks[:len(kpt_data), 3] = 1.0  # Set visibility to 1
                 else:
+                    # Already has 4 columns
                     current_frame_landmarks[:len(kpt_data)] = kpt_data
         
         video_skeleton_data.append(current_frame_landmarks)
+
     
     cap.release()
     
@@ -228,96 +183,60 @@ def extract_skeleton_from_video(video_path, output_path):
     return output_path
 
 
-# ============================================================================
-# LOAD PREDICTOR AT STARTUP
-# ============================================================================
+def predict_video(video_path, model_dir=None, output_json=None):
+    """
+    Predict từ 1 video file.
+    
+    Args:
+        video_path: Đường dẫn video
+        model_dir: Thư mục chứa model (None = tự động tìm)
+        output_json: Optional - đường dẫn lưu JSON output
+    
+    Returns:
+        dict với keys: score, confidence, json_output
+    """
+    # Auto-detect model directory
+    if model_dir is None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Point to models folder inside scripts directory
+        if os.path.basename(script_dir) == 'scripts':
+            model_dir = os.path.join(script_dir, 'models')
+        else:
+            # If running from somewhere else, look for scripts/models
+            model_dir = os.path.join(script_dir, 'models')
+    
+    if not os.path.exists(model_dir):
+        raise ValueError(f"Model directory not found: {model_dir}")
 
-predictor = None
-
-@app.on_event("startup")
-async def load_models():
-    """Load models on startup."""
-    global predictor
+    # Load model
+    all_files = os.listdir(model_dir)
+    model_files = sorted([f for f in all_files if f.startswith("stage2_model_") and f.endswith(".pkl")])
     
-    model_dir = Path(__file__).parent / "scripts" / "models"
+    if not model_files:
+        raise ValueError(f"No models found in {model_dir}")
     
-    if not model_dir.exists():
-        print(f"Warning: Model directory not found: {model_dir}")
-        return
-    
-    # Find latest model
-    all_files = list(model_dir.glob("stage2_model_*.pkl"))
-    if not all_files:
-        print(f"Warning: No models found in {model_dir}")
-        return
-    
-    model_files = sorted([f.name for f in all_files])
     latest_model = model_files[-1]
     model_base = latest_model.replace("stage2_model_", "").replace(".pkl", "")
     
-    model_path = model_dir / latest_model
-    scaler_path = model_dir / f"stage2_scaler_{model_base}.pkl"
-    metadata_path = model_dir / f"stage2_metadata_{model_base}.json"
-    stats_path = model_dir / "feature_statistics.json"
+    model_path = os.path.join(model_dir, latest_model)
+    scaler_path = os.path.join(model_dir, f"stage2_scaler_{model_base}.pkl")
+    metadata_path = os.path.join(model_dir, f"stage2_metadata_{model_base}.json")
+    stats_path = os.path.join(model_dir, "feature_statistics.json")
     
-    print(f"Loading model: {latest_model}")
-    predictor = GolfSwingPredictor(
-        str(model_path),
-        str(scaler_path),
-        str(metadata_path),
-        str(stats_path)
-    )
-    print("Model loaded successfully!")
-
-
-# ============================================================================
-# PREDICTION ENDPOINT
-# ============================================================================
-
-class PredictionResponse(BaseModel):
-    """Response model for prediction."""
-    score: str
-    band_index: int
-    confidence: float
-    probabilities: dict
-    insights: dict
-    features: list
-
-
-@app.post("/predict", response_model=PredictionResponse)
-async def predict_video(file: UploadFile = File(...)):
-    """
-    Predict golf swing score from uploaded video.
+    print(f"\nLoading model: {latest_model}")
+    predictor = GolfSwingPredictor(model_path, scaler_path, metadata_path, stats_path)
     
-    Args:
-        file: Video file (mp4, avi, mov, etc.)
-    
-    Returns:
-        Prediction result with score, confidence, and insights
-    """
-    if predictor is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="File must be a video")
-    
-    # Save uploaded video to temp file
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as video_tmp:
-        video_path = video_tmp.name
-        content = await file.read()
-        video_tmp.write(content)
-    
-    # Create temp file for skeleton
-    with tempfile.NamedTemporaryFile(suffix=".npy", delete=False) as skeleton_tmp:
-        skeleton_path = skeleton_tmp.name
+    # Extract skeleton (temporary file)
+    print("Extracting skeleton...")
+    with tempfile.NamedTemporaryFile(suffix='.npy', delete=False) as tmp:
+        tmp_path = tmp.name
     
     try:
-        # Extract skeleton
-        extract_skeleton_from_video(video_path, skeleton_path)
+        extract_skeleton_from_video(video_path, tmp_path)
         
         # Predict
-        pred_idx, probs, feature_values = predictor.predict(skeleton_path)
+        print("Running prediction...")
+        pred_idx, probs, feature_values = predictor.predict(tmp_path)
         
         band_name = predictor.get_band_name(pred_idx)
         score = band_name.replace(" ", "_").replace("-", "_")
@@ -325,11 +244,10 @@ async def predict_video(file: UploadFile = File(...)):
         # Generate insights
         insights = predictor.generate_feature_insights(feature_values)
         
-        # Build feature list
+        # Build result
+        # Add evaluation for each feature
         feature_list = []
-        for fname, val in sorted(feature_values.items(), 
-                                key=lambda x: predictor.feature_importances.get(x[0], 0.0), 
-                                reverse=True):
+        for fname, val in sorted(feature_values.items(), key=lambda x: predictor.feature_importances.get(x[0], 0.0), reverse=True):
             info = get_feature_info(fname)
             
             # Calculate evaluation vs Band 4 (Pro)
@@ -341,8 +259,13 @@ async def predict_video(file: UploadFile = File(...)):
                 if band4_stat and band4_stat.get('count', 0) > 0:
                     target_mean = band4_stat['mean']
                     target_std = band4_stat['std']
+                    
+                    # Calculate Z-score from pro mean
                     z_score = (val - target_mean) / (target_std + 1e-6)
                     
+                    # Determine if higher is better or lower is better based on feature category
+                    # For most stability/consistency features: higher is better
+                    # For error/fault features (hanging_back, sway): lower is better
                     higher_is_better = not ('hanging' in fname or 'sway' in fname or 'error' in fname)
                     
                     if abs(z_score) < 1.0:
@@ -373,30 +296,81 @@ async def predict_video(file: UploadFile = File(...)):
                 "description": description
             })
         
-        return PredictionResponse(
-            score=score,
-            band_index=int(pred_idx),
-            confidence=float(max(probs)),
-            probabilities={
-                predictor.get_band_name(i).replace(" ", "_"): float(p)
-                for i, p in enumerate(probs)
-            },
-            insights=insights,
-            features=feature_list
-        )
+        result = {
+            "score": score,
+            "band_index": int(pred_idx),
+            "confidence": float(max(probs)),
+            "json_output": {
+                "file_name": os.path.basename(video_path),
+                "prediction": {
+                    "score": score,
+                    "band_index": int(pred_idx),
+                    "confidence": float(max(probs)),
+                    "probabilities": {
+                        predictor.get_band_name(i).replace(" ", "_"): float(p)
+                        for i, p in enumerate(probs)
+                    }
+                },
+                "insights": insights,
+                "features": feature_list
+            }
+        }
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
-    
+        # Save JSON
+        if output_json:
+            os.makedirs(os.path.dirname(output_json) or '.', exist_ok=True)
+            with open(output_json, 'w', encoding='utf-8') as f:
+                json.dump(result['json_output'], f, indent=2, ensure_ascii=False)
+            print(f"JSON saved: {output_json}")
+        
+        return result
+        
     finally:
-        # Cleanup temp files
-        if os.path.exists(video_path):
-            os.unlink(video_path)
-        if os.path.exists(skeleton_path):
-            os.unlink(skeleton_path)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 if __name__ == "__main__":
-    print(f"Starting server on {HOST}:{PORT}")
-    print(f"API docs: http://{HOST}:{PORT}/docs")
-    uvicorn.run("main:app", host=HOST, port=PORT, reload=True, log_level="info")
+    import argparse
+    import pandas as pd
+    
+    parser = argparse.ArgumentParser(description="Golf Swing Prediction - Single Video")
+    parser.add_argument("video", help="Video file path")
+    parser.add_argument("--output", help="Output JSON path (optional)")
+    parser.add_argument("--model_dir", default=None, help="Model directory (auto-detect if not specified)")
+
+    
+    args = parser.parse_args()
+    
+    print("\n" + "="*70)
+    print("  GOLF SWING PREDICTION")
+    print("="*70)
+    
+    try:
+        result = predict_video(args.video, args.model_dir, args.output)
+        
+        print(f"\n{'='*70}")
+        print(f"  Score: {result['score']}")
+        print(f"  Confidence: {result['confidence']:.1%}")
+        print("="*70)
+        
+        # Print insights
+        insights = result['json_output']['insights']
+        if insights.get('strengths'):
+            print("\nStrengths:")
+            for s in insights['strengths']:
+                print(f"  + {s}")
+        
+        if insights.get('weaknesses'):
+            print("\nAreas for Improvement:")
+            for w in insights['weaknesses']:
+                print(f"  - {w}")
+        
+        if not args.output:
+            print(f"\n(Use --output to save JSON)")
+        
+        print()
+        
+    except Exception as e:
+        print(f"\nError: {e}")
+        exit(1)
