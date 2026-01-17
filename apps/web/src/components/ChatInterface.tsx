@@ -3,13 +3,11 @@
 import type React from "react"
 
 import { useState } from "react"
-import type { Message, AnalysisData } from "../types"
-import AnalysisWidget from "./AnalysisWidget"
+import type { Message } from "../types"
 import { Send } from "lucide-react"
 
 interface ChatInterfaceProps {
   messages: Message[]
-  analysisData: AnalysisData | null
   isAnalyzing: boolean
   onSendMessage: (message: string) => void
   messagesEndRef: React.RefObject<HTMLDivElement>
@@ -17,7 +15,6 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({
   messages,
-  analysisData,
   isAnalyzing,
   onSendMessage,
   messagesEndRef,
@@ -59,12 +56,6 @@ export default function ChatInterface({
                   <div className="animation-delay-400 h-2 w-2 animate-bounce rounded-full bg-blue-500"></div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {analysisData && (
-            <div className="mt-4">
-              <AnalysisWidget data={analysisData} />
             </div>
           )}
 

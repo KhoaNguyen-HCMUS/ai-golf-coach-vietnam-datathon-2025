@@ -3,21 +3,29 @@
 import { useState, useRef, useEffect } from 'react';
 import ChatInterface from './ChatInterface';
 import VideoUploadArea from './VideoUploadArea';
-import type { Message, AnalysisData } from '../types';
+import VideoFeedbackSection from './VideoFeedbackSection';
+import { useGolfWebSocket } from '../hooks/useGolfWebSocket';
+import { sendStopCommand } from '../services/mqtt.service';
+import type { Message } from '../types';
 
 export default function PlayerMode() {
-  const [messages, setMessages] = useState<Message[]>([
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
+  const [feedbackHTML, setFeedbackHTML] = useState<string | null>(null);
+  const [pendingTimestamp, setPendingTimestamp] = useState<string | null>(null);
+  
+  // WebSocket connection
+  const { isConnected, subscribe, results, error: wsError } = useGolfWebSocket();
+  const [chatMessages, setChatMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
       content:
-        "Welcome to SwingAI Lab! Upload your swing video and ask me anything about your form. I'll analyze it and provide detailed biomechanics insights.",
+        "Welcome to SwingAI Lab! Ask me anything about your golf swing and I'll help you improve your form.",
       timestamp: new Date(),
     },
   ]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -26,18 +34,81 @@ export default function PlayerMode() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [chatMessages]);
 
-  const handleVideoUpload = (file: File) => {
+  const handleVideoUpload = async (file: File) => {
     setVideoFile(file);
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: `Uploaded swing video: ${file.name}`,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, newMessage]);
+    setFeedbackHTML(null);
+    setIsProcessingVideo(true);
+
+    try {
+      // Step 1: Upload video via API
+      const response = await sendStopCommand(file);
+      console.log('✓ Video uploaded. Full response:', JSON.stringify(response, null, 2));
+      console.log('✓ Response keys:', Object.keys(response));
+      console.log('✓ Response.timestamp:', response.timestamp);
+      console.log('✓ Response type:', typeof response);
+
+      // Step 2: Subscribe to WebSocket session if timestamp is available
+      if (response.timestamp) {
+        if (isConnected) {
+          // Subscribe immediately if connected
+          subscribe(response.timestamp);
+        } else {
+          // Store timestamp and wait for connection
+          console.warn('⚠ WebSocket not connected. Will subscribe when connected...');
+          setPendingTimestamp(response.timestamp);
+        }
+      } else {
+        console.warn('⚠ No timestamp in response. Cannot subscribe to analysis.');
+        setIsProcessingVideo(false);
+      }
+    } catch (error: any) {
+      console.error('✗ Failed to upload video:', error);
+      setIsProcessingVideo(false);
+    }
   };
+
+  // Handle WebSocket results
+  useEffect(() => {
+    if (results.length > 0) {
+      // Combine all analysis HTML from multiple hits
+      const combinedHTML = results
+        .map((result, index) => {
+          if (result.analysisHTML) {
+            return `<div class="hit-analysis" data-hit-index="${result.hitIndex}">
+              ${results.length > 1 ? `<h4>Hit #${result.hitIndex}</h4>` : ''}
+              ${result.analysisHTML}
+            </div>`;
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('<hr class="my-4" />');
+
+      if (combinedHTML) {
+        setFeedbackHTML(combinedHTML);
+        setIsProcessingVideo(false);
+      }
+    }
+  }, [results]);
+
+  // Auto-subscribe when WebSocket connects and we have pending timestamp
+  useEffect(() => {
+    if (isConnected && pendingTimestamp) {
+      console.log('✓ WebSocket connected. Subscribing to timestamp:', pendingTimestamp);
+      subscribe(pendingTimestamp);
+      setPendingTimestamp(null);
+    }
+  }, [isConnected, pendingTimestamp, subscribe]);
+
+  // Handle WebSocket errors
+  useEffect(() => {
+    if (wsError) {
+      console.error('WebSocket error:', wsError);
+      // Don't stop processing, just log the error
+    }
+  }, [wsError]);
 
   const handleSendMessage = async (text: string) => {
     const userMessage: Message = {
@@ -46,42 +117,19 @@ export default function PlayerMode() {
       content: text,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    setChatMessages((prev) => [...prev, userMessage]);
 
     setIsAnalyzing(true);
 
-    // Simulate API call - replace with real API
+    // TODO: Call API for chat response - replace with real API
     setTimeout(() => {
-      const mockAnalysis: AnalysisData = {
-        keyframes: [
-          { id: 'p1', label: 'P1', timestamp: 0 },
-          { id: 'p2', label: 'P2', timestamp: 100 },
-          { id: 'p3', label: 'P3', timestamp: 200 },
-          { id: 'p4', label: 'P4', timestamp: 300 },
-          { id: 'p5', label: 'P5', timestamp: 400 },
-          { id: 'p6', label: 'P6', timestamp: 500 },
-          { id: 'p7', label: 'P7', timestamp: 600 },
-          { id: 'p8', label: 'P8', timestamp: 700 },
-        ],
-        metrics: {
-          spinAngle: 2800,
-          headMovement: 1.2,
-          shoulderRotation: 87,
-          hipRotation: 42,
-        },
-        diagnosis:
-          'Based on your swing, I detected early extension and excessive head movement, which contributes to inconsistency. Your hip rotation is good at 42°, but shoulder rotation could be improved. Your score is 7/10.',
-      };
-
-      setAnalysisData(mockAnalysis);
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: mockAnalysis.diagnosis,
+        content: 'This is a mock response. API integration will be implemented later.',
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setChatMessages((prev) => [...prev, assistantMessage]);
       setIsAnalyzing(false);
     }, 2000);
   };
@@ -93,16 +141,29 @@ export default function PlayerMode() {
           <h1 className='text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent'>
             The AI Lab
           </h1>
-          <p className='mt-2 text-gray-600'>Upload your swing and get instant AI-powered biomechanics analysis</p>
+          <p className='mt-2 text-gray-600'>Upload or record your swing and get instant AI-powered biomechanics analysis</p>
         </div>
 
         {/* Video Upload Section */}
-        <VideoUploadArea videoFile={videoFile} onUpload={handleVideoUpload} />
+        <VideoUploadArea 
+          videoFile={videoFile} 
+          onUpload={handleVideoUpload}
+          onReset={() => setVideoFile(null)}
+        />
 
-        {/* Chat Interface */}
+        {/* Video Feedback Section - Top Half */}
+        <div className="mb-4">
+          <VideoFeedbackSection
+            videoFileName={videoFile?.name || null}
+            feedbackHTML={feedbackHTML}
+            isProcessing={isProcessingVideo}
+            isConnected={isConnected}
+          />
+        </div>
+
+        {/* Chat Interface - Bottom Half */}
         <ChatInterface
-          messages={messages}
-          analysisData={analysisData}
+          messages={chatMessages}
           isAnalyzing={isAnalyzing}
           onSendMessage={handleSendMessage}
           messagesEndRef={messagesEndRef}
