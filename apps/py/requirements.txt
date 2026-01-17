@@ -1,0 +1,21 @@
+
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+pydantic==2.9.2
+
+## Các dependencies cho model
+
+pandas==2.3.3
+scikit-learn==1.8.0
+scipy==1.17.0
+matplotlib==3.10.8
+seaborn==0.13.0
+ultralytics==8.3.244
+opencv-python==4.8.1.78
+tqdm==4.65.0
+pyyaml==6.0.2
+numpy==1.26.4
+ipykernel
+requests
+
