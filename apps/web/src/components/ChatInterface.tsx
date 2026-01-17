@@ -4,7 +4,7 @@ import type React from 'react';
 
 import { useState } from 'react';
 import type { Message } from '../types';
-import { Send, Trash2, X } from 'lucide-react';
+import { Send, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -26,6 +26,7 @@ export default function ChatInterface({
   onClearContext,
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
+  const [isContextExpanded, setIsContextExpanded] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,14 +65,37 @@ export default function ChatInterface({
                       Analysis Context
                     </span>
                   </div>
-                  <div
-                    className='text-sm text-gray-700 prose prose-sm max-w-none'
-                    dangerouslySetInnerHTML={{ __html: analysisContext }}
-                    style={{
-                      fontSize: '0.875rem',
-                      lineHeight: '1.6',
-                    }}
-                  />
+                  <div className='relative'>
+                    <div
+                      className={`text-sm text-gray-700 prose prose-sm max-w-none overflow-hidden transition-all duration-300 ${
+                        isContextExpanded ? 'max-h-[600px] overflow-y-auto' : 'max-h-32'
+                      }`}
+                      dangerouslySetInnerHTML={{ __html: analysisContext }}
+                      style={{
+                        fontSize: '0.875rem',
+                        lineHeight: '1.6',
+                      }}
+                    />
+                    {!isContextExpanded && (
+                      <div className='absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-blue-50 to-transparent pointer-events-none' />
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setIsContextExpanded(!isContextExpanded)}
+                    className='mt-2 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors'
+                  >
+                    {isContextExpanded ? (
+                      <>
+                        <ChevronUp className='h-4 w-4' />
+                        Show less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className='h-4 w-4' />
+                        Show more
+                      </>
+                    )}
+                  </button>
                 </div>
                 {onClearContext && (
                   <button
