@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Upload, Video } from "lucide-react"
 import VideoRecorder from "./VideoRecorder"
 
 interface VideoUploadAreaProps {
   videoFile: File | null
-  onUpload: (file: File) => void
+  onUpload: (file: File, mode: 'record' | 'upload') => void
   onReset?: () => void
 }
 
@@ -30,25 +30,80 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
     if (file?.type.startsWith("video/")) {
-      onUpload(file)
+      setMode('upload')
+      onUpload(file, 'upload')
     }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.currentTarget.files?.[0]
     if (file) {
-      onUpload(file)
+      setMode('upload')
+      onUpload(file, 'upload')
     }
   }
 
   const handleRecordComplete = (file: File) => {
-    onUpload(file)
+    setMode('record')
+    onUpload(file, 'record')
   }
+
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+
+  // Create preview URL when videoFile changes
+  useEffect(() => {
+    if (videoFile) {
+      const url = URL.createObjectURL(videoFile);
+      setVideoPreviewUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setVideoPreviewUrl(null);
+    }
+  }, [videoFile]);
 
   return (
     <div className="mb-6">
+      <div className="space-y-4">
+        {/* Mode Toggle - Always visible */}
+        <div className="flex gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
+          <button
+            onClick={() => {
+              if (videoFile) {
+                onReset?.();
+              }
+              setMode("upload");
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
+              mode === "upload"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Upload className="h-4 w-4" />
+            Upload Video
+          </button>
+          <button
+            onClick={() => {
+              if (videoFile) {
+                onReset?.();
+              }
+              setMode("record");
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
+              mode === "record"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Video className="h-4 w-4" />
+            Record Video
+          </button>
+        </div>
+
       {videoFile ? (
-        <div className="card-base p-4 sm:p-6 bg-blue-50/50 border border-blue-200/50 rounded-2xl">
+        <div className="card-base p-4 sm:p-6 bg-blue-50/50 border border-blue-200/50 rounded-2xl space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1">
               <div className="flex-shrink-0">
@@ -77,42 +132,29 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
             <button
               onClick={() => {
                 onReset?.()
-                setMode("upload")
               }}
               className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Change
             </button>
           </div>
+          
+          {/* Video Preview */}
+          {videoPreviewUrl && mode === "upload" && (
+            <div className="mt-4">
+              <video
+                src={videoPreviewUrl}
+                controls
+                className="w-full rounded-lg"
+                style={{ maxHeight: '400px' }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Mode Toggle */}
-          <div className="flex gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5">
-            <button
-              onClick={() => setMode("upload")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
-                mode === "upload"
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Upload className="h-4 w-4" />
-              Upload Video
-            </button>
-            <button
-              onClick={() => setMode("record")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold transition-all ${
-                mode === "record"
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Video className="h-4 w-4" />
-              Record Video
-            </button>
-          </div>
-
+        <>
           {/* Upload Mode */}
           {mode === "upload" && (
             <label
@@ -136,8 +178,9 @@ export default function VideoUploadArea({ videoFile, onUpload, onReset }: VideoU
 
           {/* Record Mode */}
           {mode === "record" && <VideoRecorder onRecordComplete={handleRecordComplete} />}
-        </div>
+        </>
       )}
+      </div>
     </div>
   )
 }

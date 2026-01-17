@@ -24,6 +24,11 @@ export interface MqttStopNoVideoResponse {
   message: string;
 }
 
+export interface AnalyzeVideoResponse {
+  message: string;
+  data: string; // HTML string
+}
+
 /**
  * Send START command to MQTT server
  * @returns Promise with response data
@@ -124,6 +129,47 @@ export const sendStopNoVideoCommand = async (): Promise<MqttStopNoVideoResponse>
     console.error('Error sending MQTT STOP (no video) command:', error);
     // Show error toast
     toast.error(error.message || 'Failed to send STOP command');
+    throw error;
+  }
+};
+
+export interface AnalyzeVideoResponse {
+  message: string;
+  data: string; // HTML string
+}
+
+/**
+ * Analyze a single video file
+ * @param videoFile Video file to analyze
+ * @returns Promise with analysis HTML
+ */
+export const analyzeVideo = async (videoFile: File): Promise<AnalyzeVideoResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+
+    const response = await fetch(`${BASE_URL}/api/analyze`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Video analysis completed:', data);
+    
+    // Show success toast
+    if (data.message) {
+      toast.success(data.message);
+    }
+    return data;
+  } catch (error: any) {
+    console.error('Error analyzing video:', error);
+    // Show error toast
+    toast.error(error.message || 'Failed to analyze video');
     throw error;
   }
 };
