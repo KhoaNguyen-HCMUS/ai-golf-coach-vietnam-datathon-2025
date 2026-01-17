@@ -33,3 +33,5 @@ data
 
 # model weights
 *.pt
+
+videos/
