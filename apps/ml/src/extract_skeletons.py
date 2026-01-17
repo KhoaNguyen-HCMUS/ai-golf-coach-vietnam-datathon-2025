@@ -9,8 +9,8 @@ import threading
 import time
 
 # --- CẤU HÌNH ---
-INPUT_FOLDER = "./data"  # Folder chứa video gốc (0.mp4, 1.mp4...)
-OUTPUT_FOLDER = "./data/TDTU_skeletons_npy"  # Folder lưu kết quả
+INPUT_FOLDER = "../../../data/TDTU-Golf-Pose-v1/preprocessed"  # Folder chứa video gốc (0.mp4, 1.mp4...)
+OUTPUT_FOLDER = "../../../data/TDTU-Golf-Pose-v1/preprocessed_yolov8_npy"  # Folder lưu kết quả
 CONF_THRESHOLD = 0.5  # Độ tin cậy tối thiểu để chọn người
 MAX_WORKERS = 6  # Số luồng chạy song song (Tùy CPU mạnh yếu)
 
@@ -155,9 +155,9 @@ def process_video_to_npy(args):
 
 
 def run_extraction():
-    # Tìm tất cả file mp4 trong thư mục (bao gồm folder con)
-    search_path = os.path.join(INPUT_FOLDER, "**/*.mp4")
-    video_files = glob.glob(search_path, recursive=True)
+    # Tìm tất cả file mp4 trong thư mục
+    search_path = os.path.join(INPUT_FOLDER, "*.mp4")
+    video_files = glob.glob(search_path)
 
     # Sắp xếp tên file (0.mp4, 1.mp4...) cho đẹp đội hình
     try:
