@@ -67,9 +67,8 @@ export default function ChatInterface({
                   </div>
                   <div className='relative'>
                     <div
-                      className={`text-sm text-gray-700 prose prose-sm max-w-none overflow-hidden transition-all duration-300 ${
-                        isContextExpanded ? 'max-h-[600px] overflow-y-auto' : 'max-h-32'
-                      }`}
+                      className={`text-sm text-gray-700 prose prose-sm max-w-none overflow-hidden transition-all duration-300 ${isContextExpanded ? 'max-h-[600px] overflow-y-auto' : 'max-h-32'
+                        }`}
                       dangerouslySetInnerHTML={{ __html: analysisContext }}
                       style={{
                         fontSize: '0.875rem',
@@ -113,11 +112,10 @@ export default function ChatInterface({
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-xs rounded-xl px-4 py-3 sm:max-w-md transition-all ${
-                  message.role === 'user'
+                className={`max-w-xs rounded-xl px-4 py-3 sm:max-w-md transition-all ${message.role === 'user'
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-md shadow-blue-200/50'
                     : 'bg-gray-100 border border-gray-200 text-gray-900'
-                }`}
+                  }`}
               >
                 {message.role === 'assistant' && message.content.includes('<') ? (
                   <div
