@@ -39,6 +39,15 @@ export const stopController = async (req, res) => {
   }
 };
 
+export const stopWithoutVideoController = async (req, res) => {
+  try {
+    await mqttService.publishCmd("STOP");
+    res.status(200).json({ message: "STOP without video uploaded" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 const waitForSessionData = (timeout) => {
   return new Promise((resolve) => {
     const startTime = Date.now();
@@ -55,3 +64,5 @@ const waitForSessionData = (timeout) => {
     }, 100);
   });
 };
+
+

@@ -18,5 +18,6 @@ const upload = multer({
 
 router.post('/cmd/start', mqttController.startController)
 router.post('/cmd/stop', upload.single('video'), mqttController.stopController)
+router.post('/cmd/stop-no-video', mqttController.stopWithoutVideoController)
 
 export default router;
