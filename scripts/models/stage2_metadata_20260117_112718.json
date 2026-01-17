@@ -1,0 +1,39 @@
+{
+  "timestamp": "20260117_112718",
+  "n_features": 22,
+  "selected_features": [
+    "bio_right_armpit_angle",
+    "stab_hip_sway",
+    "bio_shoulder_hanging_back",
+    "stab_head_std",
+    "stab_overall",
+    "bio_hip_hanging_back",
+    "stab_head_vertical_range",
+    "kin_rom_vertical",
+    "stab_spine_angle_std",
+    "timing_followthrough_frames",
+    "bio_right_arm_angle_top",
+    "bio_left_arm_angle_top",
+    "kin_rom_horizontal",
+    "bio_upper_tilt",
+    "bio_finish_angle",
+    "kin_impact_velocity",
+    "bio_shoulder_angle_top",
+    "geo_elbow_angle_top",
+    "bio_right_leg_angle_impact",
+    "bio_shoulder_loc",
+    "timing_total_frames",
+    "kin_peak_velocity"
+  ],
+  "train_f1_macro": 0.9977777541649185,
+  "n_samples": 1800,
+  "class_distribution": {
+    "0": 360,
+    "1": 360,
+    "2": 360,
+    "3": 360,
+    "4": 360
+  },
+  "model_type": "StackingClassifier (RF + GB + SVM + KNN \u2192 LogisticRegression)",
+  "stage": "Stage 2 - Top Features (Default Hyperparameters)"
+}
