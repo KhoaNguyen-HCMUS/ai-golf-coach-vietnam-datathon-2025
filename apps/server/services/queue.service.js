@@ -31,7 +31,8 @@ export const processQueue = async () => {
   // Import các function cần thiết
   // const { processCVModel } = await import('./cv.service.js')
   const cvResult = modelService.getResult(segment);
-  const analysis = await llmService.processLLMAnalysis(cvResult);
+  // const analysis = await llmService.processLLMAnalysis(cvResult);
+  const analysis = cvResult;
   const videoBuffer = fs.readFileSync(segment.videoPath);
   const videoBase64 = videoBuffer.toString("base64");
 
