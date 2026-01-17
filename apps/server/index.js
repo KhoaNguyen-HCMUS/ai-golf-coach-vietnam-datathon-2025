@@ -1,25 +1,29 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import * as mqttService from './services/mqtt.service.js';
-import mqttRouter from './routes/mqtt.route.js';
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import http from 'http'
+import * as mqttService from './services/mqtt.service.js'
+import * as websocketService from './services/websocket.service.js'
+import mqttRouter from './routes/mqtt.route.js'
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-const HOST = '10.20.121.231';
+const app = express()
+const PORT = process.env.PORT
+const HOST = process.env.HOST
 
-app.use(cors());
-app.use(express.json());
-
-app.use('/mqtt', mqttRouter);
+app.use(cors())
+app.use(express.json())
+app.use('/api/mqtt', mqttRouter)
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Hello world!' });
-});
+  res.json({ message: 'AI Golf Coach API' })
+})
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server is running on http://${HOST}:${PORT}`);
-  mqttService.connectMqtt();
-});
+// Tạo HTTP server cho WebSocket
+const server = http.createServer(app)
 
-
+server.listen(PORT, HOST, () => {
+  console.log(`Server: http://${HOST}:${PORT}`)
+  mqttService.connectMqtt()
+  websocketService.initWebSocket(server)
+  console.log('All services ready')
+})
