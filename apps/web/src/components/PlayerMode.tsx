@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import ChatInterface from './ChatInterface';
 import VideoUploadArea from './VideoUploadArea';
-import type { Message, AnalysisData } from '../types';
+import VideoFeedbackSection from './VideoFeedbackSection';
+import type { Message } from '../types';
 
 export default function PlayerMode() {
   const [messages, setMessages] = useState<Message[]>([
@@ -17,7 +18,17 @@ export default function PlayerMode() {
   ]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
+  const [feedbackText, setFeedbackText] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content:
+        "Welcome to SwingAI Lab! Ask me anything about your golf swing and I'll help you improve your form.",
+      timestamp: new Date(),
+    },
+  ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -26,17 +37,20 @@ export default function PlayerMode() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [chatMessages]);
 
   const handleVideoUpload = (file: File) => {
     setVideoFile(file);
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: `Uploaded swing video: ${file.name}`,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, newMessage]);
+    setFeedbackText(null);
+    setIsProcessingVideo(true);
+    
+    // TODO: Call API to process video and get feedback
+    // For now, simulate processing
+    setTimeout(() => {
+      setIsProcessingVideo(false);
+      // Mock feedback text - will be replaced with real API response
+      setFeedbackText('Based on your swing, I detected early extension and excessive head movement, which contributes to inconsistency. Your hip rotation is good at 42°, but shoulder rotation could be improved. Your score is 7/10.');
+    }, 3000);
   };
 
   const handleSendMessage = async (text: string) => {
@@ -46,42 +60,19 @@ export default function PlayerMode() {
       content: text,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    setChatMessages((prev) => [...prev, userMessage]);
 
     setIsAnalyzing(true);
 
-    // Simulate API call - replace with real API
+    // TODO: Call API for chat response - replace with real API
     setTimeout(() => {
-      const mockAnalysis: AnalysisData = {
-        keyframes: [
-          { id: 'p1', label: 'P1', timestamp: 0 },
-          { id: 'p2', label: 'P2', timestamp: 100 },
-          { id: 'p3', label: 'P3', timestamp: 200 },
-          { id: 'p4', label: 'P4', timestamp: 300 },
-          { id: 'p5', label: 'P5', timestamp: 400 },
-          { id: 'p6', label: 'P6', timestamp: 500 },
-          { id: 'p7', label: 'P7', timestamp: 600 },
-          { id: 'p8', label: 'P8', timestamp: 700 },
-        ],
-        metrics: {
-          spinAngle: 2800,
-          headMovement: 1.2,
-          shoulderRotation: 87,
-          hipRotation: 42,
-        },
-        diagnosis:
-          'Based on your swing, I detected early extension and excessive head movement, which contributes to inconsistency. Your hip rotation is good at 42°, but shoulder rotation could be improved. Your score is 7/10.',
-      };
-
-      setAnalysisData(mockAnalysis);
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: mockAnalysis.diagnosis,
+        content: 'This is a mock response. API integration will be implemented later.',
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setChatMessages((prev) => [...prev, assistantMessage]);
       setIsAnalyzing(false);
     }, 2000);
   };
@@ -103,10 +94,18 @@ export default function PlayerMode() {
           onReset={() => setVideoFile(null)}
         />
 
-        {/* Chat Interface */}
+        {/* Video Feedback Section - Top Half */}
+        <div className="mb-4">
+          <VideoFeedbackSection
+            videoFileName={videoFile?.name || null}
+            feedbackText={feedbackText}
+            isProcessing={isProcessingVideo}
+          />
+        </div>
+
+        {/* Chat Interface - Bottom Half */}
         <ChatInterface
-          messages={messages}
-          analysisData={analysisData}
+          messages={chatMessages}
           isAnalyzing={isAnalyzing}
           onSendMessage={handleSendMessage}
           messagesEndRef={messagesEndRef}
