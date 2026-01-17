@@ -52,7 +52,6 @@ export const publishCmd = async (cmd) => {
             if (err) reject(new Error('Publish failed: ' + err.message))
             else resolve()
         })
-        console.log(`Published command: ${cmd}`)
     })
 }
 

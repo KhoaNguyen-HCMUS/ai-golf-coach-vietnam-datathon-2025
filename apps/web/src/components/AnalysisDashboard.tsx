@@ -31,7 +31,7 @@ export default function AnalysisDashboard({ student }: AnalysisDashboardProps) {
                 isReviewed ? "bg-green-100 text-green-700" : "bg-cyan-100 text-cyan-700"
               }`}
             >
-              {isReviewed ? "✓ Reviewed" : "⏳ Pending"}
+              {isReviewed ? "Reviewed" : "Pending"}
             </span>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function AnalysisDashboard({ student }: AnalysisDashboardProps) {
           {/* AI Diagnosis */}
           <div className="card-base flex flex-col p-4 sm:p-6">
             <h3 className="mb-4 font-bold text-foreground text-base sm:text-lg flex items-center gap-2">
-              <span className="text-lg sm:text-xl">🤖</span> AI Diagnosis
+              AI Diagnosis
             </h3>
             <p className="mb-4 text-xs sm:text-sm text-foreground leading-relaxed">{student.analysis?.diagnosis}</p>
 
@@ -132,7 +132,7 @@ export default function AnalysisDashboard({ student }: AnalysisDashboardProps) {
           {/* Coach Validation */}
           <div className="card-base flex flex-col p-4 sm:p-6">
             <h3 className="mb-4 font-bold text-foreground text-base sm:text-lg flex items-center gap-2">
-              <span className="text-lg sm:text-xl">👨‍🏫</span> Coach Validation
+              Coach Validation
             </h3>
 
             {isEditing ? (
@@ -169,10 +169,10 @@ export default function AnalysisDashboard({ student }: AnalysisDashboardProps) {
                   disabled={isReviewed}
                   className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
-                  ✓ Confirm AI Analysis
+                  Confirm AI Analysis
                 </button>
                 <button onClick={() => setIsEditing(true)} className="btn-secondary w-full text-sm sm:text-base">
-                  ✏️ Edit & Override
+                  Edit & Override
                 </button>
               </div>
             )}
