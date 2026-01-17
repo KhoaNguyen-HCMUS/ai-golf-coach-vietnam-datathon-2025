@@ -23,7 +23,9 @@ export const stopController = async (req, res) => {
     }
     const hits = await waitForSessionData(5000);
 
-    if (!hits) {
+    // Check if hits is null, undefined, or empty
+    if (!hits || (Array.isArray(hits) && hits.length === 0)) {
+      console.log("⚠ No valid hits data received from ESP32");
       return res.status(200).json({
         message: "No hits detected",
         videoUploaded: true,
@@ -58,6 +60,12 @@ export const stopController = async (req, res) => {
         console.log(`[Controller] 📍 Hits data:`, hits);
         // Extract hits array from response { start_time: ..., hits: [...] }
         const hitsArray = hits.hits || hits;
+
+        // Additional validation before processing
+        if (!hitsArray || hitsArray.length === 0) {
+          console.error("⚠ Hits array is empty, skipping video processing");
+          return;
+        }
         const result = await videoService.processVideoWithHits(
           videoPath,
           hitsArray,

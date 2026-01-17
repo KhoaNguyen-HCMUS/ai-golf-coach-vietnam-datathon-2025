@@ -28,11 +28,8 @@ export const processQueue = async () => {
 
   console.log(`[Queue] Processing ${segment.clipId}`);
 
-  // Import các function cần thiết
-  // const { processCVModel } = await import('./cv.service.js')
   const cvResult = modelService.getResult(segment);
   const analysis = await llmService.processLLMAnalysis(cvResult);
-  // const analysis = 'LLM analysis placeholder";
   // const analysis = {
   //   clipId: segment.clipId,
   //   timestamp: segment.timestamp,
@@ -79,7 +76,7 @@ export const processQueue = async () => {
     },
   });
 
-  console.log(`Result: ${JSON.stringify(analysis)}`);
+  // console.log(`Result: ${JSON.stringify(analysis)}`);
   console.log(`[Queue] Completed ${segment.clipId}`);
   processQueue();
 };
