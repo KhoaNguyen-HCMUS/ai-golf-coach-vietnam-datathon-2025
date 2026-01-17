@@ -673,7 +673,7 @@ class IterativeFeaturePruningTrainer:
 
 def main():
     trainer = IterativeFeaturePruningTrainer(
-        top_n_features=22,  # Keep top 22 features (drop 17)
+        top_n_features=20,  # Keep top 20 features
         n_jobs=4  # Use 2-3 parallel jobs (safe + faster than sequential)
     )
     
