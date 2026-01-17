@@ -31,38 +31,38 @@ export const processQueue = async () => {
   // Import các function cần thiết
   // const { processCVModel } = await import('./cv.service.js')
   const cvResult = modelService.getResult(segment);
-  // const analysis = await llmService.processLLMAnalysis(cvResult);
+  const analysis = await llmService.processLLMAnalysis(cvResult);
   // const analysis = 'LLM analysis placeholder";
-  const analysis = {
-    clipId: segment.clipId,
-    timestamp: segment.timestamp,
-    hitIndex: segment.hitIndex,
-    analysisHTML: `
-    <h3>Overall Assessment</h3>
-    <p><strong>Score: 85/100</strong></p>
-    <p>Solid swing with good tempo and balance. Club speed at 145.3 km/h is excellent.</p>
+  // const analysis = {
+  //   clipId: segment.clipId,
+  //   timestamp: segment.timestamp,
+  //   hitIndex: segment.hitIndex,
+  //   analysisHTML: `
+  //   <h3>Overall Assessment</h3>
+  //   <p><strong>Score: 85/100</strong></p>
+  //   <p>Solid swing with good tempo and balance. Club speed at 145.3 km/h is excellent.</p>
     
-    <h3>Strengths</h3>
-    <ul>
-      <li style="color: #4caf50;">✓ Excellent stance and alignment</li>
-      <li style="color: #4caf50;">✓ Smooth backswing rotation (87.5°)</li>
-      <li style="color: #4caf50;">✓ Strong impact position</li>
-    </ul>
+  //   <h3>Strengths</h3>
+  //   <ul>
+  //     <li style="color: #4caf50;">✓ Excellent stance and alignment</li>
+  //     <li style="color: #4caf50;">✓ Smooth backswing rotation (87.5°)</li>
+  //     <li style="color: #4caf50;">✓ Strong impact position</li>
+  //   </ul>
     
-    <h3>Areas to Improve</h3>
-    <ul>
-      <li style="color: #ff9800;">⚠ Hip rotation could be better (45.2° → aim for 50°)</li>
-      <li style="color: #ff9800;">⚠ Work on follow-through consistency</li>
-    </ul>
+  //   <h3>Areas to Improve</h3>
+  //   <ul>
+  //     <li style="color: #ff9800;">⚠ Hip rotation could be better (45.2° → aim for 50°)</li>
+  //     <li style="color: #ff9800;">⚠ Work on follow-through consistency</li>
+  //   </ul>
     
-    <h3>Recommendations</h3>
-    <ol>
-      <li>Practice hip mobility drills 3x weekly</li>
-      <li>Focus on swing repeatability</li>
-      <li>Great job! Keep practicing!</li>
-    </ol>
-  `,
-  };
+  //   <h3>Recommendations</h3>
+  //   <ol>
+  //     <li>Practice hip mobility drills 3x weekly</li>
+  //     <li>Focus on swing repeatability</li>
+  //     <li>Great job! Keep practicing!</li>
+  //   </ol>
+  // `,
+  // };
   const videoBuffer = fs.readFileSync(segment.videoPath);
   const videoBase64 = videoBuffer.toString("base64");
 
