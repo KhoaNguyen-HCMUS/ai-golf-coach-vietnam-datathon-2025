@@ -1,31 +1,62 @@
-export const getResult = (segment) => ({
-  clipId: segment.clipId,
-  timestamp: segment.timestamp,
-  hitIndex: segment.hitIndex,
-  videoPath: segment.videoPath,
-  tracking: {
-    person: {
-      detected: true,
-      pose_angles: {
-        backswing: 87.5,
-        hip_rotation: 45.2,
-        shoulder_rotation: 92.3,
+import axios from "axios";
+import FormData from "form-data";
+import fs from "fs";
+
+const MODEL_API_URL = process.env.MODEL_API_URL;
+
+export const getResult = async (segment) => {
+  try {
+    console.log(
+      `[ModelService] Sending video to predict: ${segment.videoPath}`
+    );
+
+    // Read video file
+    const videoStream = fs.createReadStream(segment.videoPath);
+
+    // Create FormData
+    const formData = new FormData();
+    formData.append("file", videoStream, "video.mp4");
+
+    // Call model API
+    const response = await axios.post(`${MODEL_API_URL}/predict`, formData, {
+      headers: formData.getHeaders(),
+      timeout: 300000, // 5 minutes timeout for video processing
+    });
+
+    const modelResult = response.data;
+
+    // Return enriched result with segment info and model data
+    return {
+      clipId: segment.clipId,
+      timestamp: segment.timestamp,
+      hitIndex: segment.hitIndex,
+      videoPath: segment.videoPath,
+      score: modelResult.score,
+      band_index: modelResult.band_index,
+      confidence: modelResult.confidence,
+      probabilities: modelResult.probabilities,
+      insights: modelResult.insights,
+      features: modelResult.features,
+    };
+  } catch (error) {
+    console.error(
+      `[ModelService] Error processing video ${segment.videoPath}:`,
+      error.message
+    );
+
+    // Return fallback result on error
+    return {
+      clipId: segment.clipId,
+      timestamp: segment.timestamp,
+      hitIndex: segment.hitIndex,
+      videoPath: segment.videoPath,
+      error: error.message,
+      score: "error",
+      insights: {
+        strengths: ["Unable to analyze swing"],
+        weaknesses: [],
       },
-    },
-    club: {
-      detected: true,
-      speed_kmh: 145.3,
-      impact_frame: 45,
-    },
-    ball: {
-      detected: true,
-      speed_kmh: 165.8,
-      launch_angle: 14.5,
-      trajectory: [
-        { x: 320, y: 400 },
-        { x: 350, y: 380 },
-        { x: 400, y: 350 },
-      ],
-    },
-  },
-})
+      features: [],
+    };
+  }
+};

@@ -3,7 +3,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-const PROMPT = `You are an expert golf coach. Analyze this swing data and provide detailed feedback in HTML format.
+const PROMPT = `You are an expert professional golf coach. Analyze the detailed swing analysis data and provide coaching feedback in HTML format.
+
+IMPORTANT: Use the provided analysis data (score, band, insights, features) as the foundation for your response. Focus on:
+1. What the overall band score means for the golfer's skill level
+2. The key strengths mentioned in the analysis  
+3. The areas for improvement highlighted
+4. Actionable recommendations based on the specific biomechanical and kinematic features
 
 Return your analysis as clean HTML that can be directly inserted into a webpage. Use these elements:
 - <h3> for section headings
@@ -13,68 +19,64 @@ Return your analysis as clean HTML that can be directly inserted into a webpage.
 - Use colors: green (#4caf50) for good points, orange (#ff9800) for improvements, red (#f44336) for issues
 
 Structure your response with these sections:
-1. Overall Assessment (with score out of 100)
-2. Technical Analysis (stance, backswing, impact, follow-through)
-3. Key Strengths
-4. Areas for Improvement
-5. Specific Recommendations
+1. Overall Assessment (with confidence level and what band score means)
+2. Key Strengths (reference the provided strengths)
+3. Areas for Improvement (reference the provided weaknesses)
+4. Important Features Analysis (highlight the most important features affecting the score)
+5. Specific Recommendations (actionable drills and focus areas)
 
-Make it professional, encouraging, and actionable.`;
+Make it professional, encouraging, and actionable. Be specific using the feature names and values provided.`;
 
 const PROMPT1 = `You are an expert golf coach. Answer in clean HTML (no markdown fences). Use <h3>, <p>, <ul>, <li>, <strong>. Keep it concise, supportive, and actionable.`;
 
 export const processLLMAnalysis = async (cvResult) => {
   console.log(`[LLM] Analyzing ${cvResult.clipId}`);
 
+  // Build detailed feature text from the features array
+  const topFeatures = (cvResult.features || [])
+    .slice(0, 8)
+    .map(
+      (f) =>
+        `- ${f.name} (${f.key}): ${f.value.toFixed(2)} ${f.unit} - ${
+          f.evaluation
+        } (${f.description})`
+    )
+    .join("\n");
+
+  const strengthsList = (cvResult.insights?.strengths || [])
+    .map((s) => `- ${s}`)
+    .join("\n");
+
+  const weaknessesList = (cvResult.insights?.weaknesses || [])
+    .map((w) => `- ${w}`)
+    .join("\n");
+
   const prompt = `${PROMPT}
 
-Golf Swing Data:
-- Backswing Angle: ${cvResult.tracking.person.pose_angles.backswing}°
-- Hip Rotation: ${cvResult.tracking.person.pose_angles.hip_rotation}°
-- Shoulder Rotation: ${cvResult.tracking.person.pose_angles.shoulder_rotation}°
-- Club Speed: ${cvResult.tracking.club.speed_kmh} km/h
-- Ball Speed: ${cvResult.tracking.ball.speed_kmh} km/h
-- Launch Angle: ${cvResult.tracking.ball.launch_angle}°
+Swing Analysis Results:
+Score Band: ${cvResult.score} (Band Index: ${cvResult.band_index}/10)
+Confidence: ${(cvResult.confidence * 100).toFixed(1)}%
 
-Provide your professional analysis in HTML format.`;
+Strengths:
+${strengthsList || "No specific strengths identified"}
+
+Areas for Improvement:
+${weaknessesList || "No specific weaknesses identified"}
+
+Key Features (importance weighted):
+${topFeatures}
+
+Probabilities by Band:
+${Object.entries(cvResult.probabilities || {})
+  .map(([band, prob]) => `- ${band}: ${(prob * 100).toFixed(1)}%`)
+  .join("\n")}
+
+Provide your professional coaching analysis in HTML format.`;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const htmlAnalysis = response.text();
-//     const htmlAnalysis = `
-//   <h3>Overall Assessment</h3>
-//   <p><strong>Score: 85/100</strong></p>
-//   <p>Excellent swing with great tempo and balance.</p>
-  
-//   <h3>Technical Analysis</h3>
-//   <ul>
-//     <li><strong>Backswing:</strong> 87.5° - Great rotation</li>
-//     <li><strong>Hip Rotation:</strong> 45.2° - Good</li>
-//     <li><strong>Shoulder Rotation:</strong> 92.3° - Excellent</li>
-//     <li><strong>Club Speed:</strong> 145.3 km/h - Strong</li>
-//   </ul>
-  
-//   <h3 style="color: #4caf50;">Strengths</h3>
-//   <ul>
-//     <li style="color: #4caf50;">✓ Perfect stance and alignment</li>
-//     <li style="color: #4caf50;">✓ Smooth backswing</li>
-//     <li style="color: #4caf50;">✓ Strong impact position</li>
-//   </ul>
-  
-//   <h3 style="color: #ff9800;">Improvements</h3>
-//   <ul>
-//     <li style="color: #ff9800;">⚠ Hip rotation: aim for 50°</li>
-//     <li style="color: #ff9800;">⚠ Work on follow-through</li>
-//   </ul>
-  
-//   <h3>Recommendations</h3>
-//   <ol>
-//     <li>Practice hip mobility drills</li>
-//     <li>Focus on swing consistency</li>
-//     <li>Keep up the great work!</li>
-//   </ol>
-// `;
 
     console.log(
       "[LLM] HTML Analysis received:",
@@ -128,39 +130,6 @@ Return ONLY HTML (no code fences).`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let html = response.text() || "";
-  //   let html = `
-  //   <h3>Overall Assessment</h3>
-  //   <p><strong>Score: 85/100</strong></p>
-  //   <p>Excellent swing with great tempo and balance.</p>
-    
-  //   <h3>Technical Analysis</h3>
-  //   <ul>
-  //     <li><strong>Backswing:</strong> 87.5° - Great rotation</li>
-  //     <li><strong>Hip Rotation:</strong> 45.2° - Good</li>
-  //     <li><strong>Shoulder Rotation:</strong> 92.3° - Excellent</li>
-  //     <li><strong>Club Speed:</strong> 145.3 km/h - Strong</li>
-  //   </ul>
-    
-  //   <h3 style="color: #4caf50;">Strengths</h3>
-  //   <ul>
-  //     <li style="color: #4caf50;">✓ Perfect stance and alignment</li>
-  //     <li style="color: #4caf50;">✓ Smooth backswing</li>
-  //     <li style="color: #4caf50;">✓ Strong impact position</li>
-  //   </ul>
-    
-  //   <h3 style="color: #ff9800;">Improv  ements</h3>
-  //   <ul>
-  //     <li style="color: #ff9800;">⚠ Hip rotation: aim for 50°</li>
-  //     <li style="color: #ff9800;">⚠ Work on follow-through</li>
-  //   </ul>
-    
-  //   <h3>Recommendations</h3>
-  //   <ol>
-  //     <li>Practice hip mobility drills</li>
-  //     <li>Focus on swing consistency</li>
-  //     <li>Keep up the great work!</li>
-  //   </ol>
-  // `
 
     // Cleanup code fences if the model adds them
     html = html
