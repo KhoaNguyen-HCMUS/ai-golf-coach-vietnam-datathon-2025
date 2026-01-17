@@ -12,13 +12,17 @@ export default function PlayerMode() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
-  const [feedbackHTML, setFeedbackHTML] = useState<string | null>(null);
   const [pendingTimestamp, setPendingTimestamp] = useState<string | null>(null);
-  const [videoData, setVideoData] = useState<Array<{
-    base64: string;
-    mimeType: string;
-    filename: string;
-    size: number;
+  const [hitResults, setHitResults] = useState<Array<{
+    hitIndex: number;
+    clipId: string;
+    analysisHTML?: string;
+    video?: {
+      base64: string;
+      mimeType: string;
+      filename: string;
+      size: number;
+    };
   }>>([]);
   
   // WebSocket connection
@@ -44,7 +48,7 @@ export default function PlayerMode() {
 
   const handleVideoUpload = async (file: File) => {
     setVideoFile(file);
-    setFeedbackHTML(null);
+    setHitResults([]); // Clear previous results
     setIsProcessingVideo(true);
 
     try {
@@ -89,49 +93,22 @@ export default function PlayerMode() {
     console.log('🟣 [PlayerMode] Results data:', results);
     
     if (results.length > 0) {
-      // Extract video data
-      const videos = results
-        .filter((result) => result && result.video)
-        .map((result) => result.video!);
-      setVideoData(videos);
-      console.log('🟣 [PlayerMode] Extracted video data:', videos.length, 'videos');
-
-      // Combine all analysis HTML from multiple hits
-      const combinedHTML = results
-        .map((result, index) => {
-          console.log(`🟣 [PlayerMode] Processing result ${index}:`, {
-            clipId: result?.clipId,
-            hitIndex: result?.hitIndex,
-            hasAnalysisHTML: !!result?.analysisHTML,
-            analysisHTMLLength: result?.analysisHTML?.length || 0,
-            hasVideo: !!result?.video
-          });
-          
-          if (result && result.analysisHTML) {
-            const html = `<div class="hit-analysis" data-hit-index="${result.hitIndex}">
-              ${results.length > 1 ? `<h4>Hit #${result.hitIndex}</h4>` : ''}
-              ${result.analysisHTML}
-            </div>`;
-            console.log(`🟣 [PlayerMode] Generated HTML for hit #${result.hitIndex}`);
-            return html;
-          }
-          console.log(`🟡 [PlayerMode] Result ${index} has no analysisHTML`);
-          return '';
-        })
-        .filter(Boolean)
-        .join('<hr class="my-4" />');
-
-      console.log('🟣 [PlayerMode] Combined HTML length:', combinedHTML.length);
+      // Sort results by hitIndex and store them individually
+      const sortedResults = [...results]
+        .filter((result) => result && result.hitIndex)
+        .sort((a, b) => (a.hitIndex || 0) - (b.hitIndex || 0))
+        .map((result) => ({
+          hitIndex: result.hitIndex,
+          clipId: result.clipId,
+          analysisHTML: result.analysisHTML,
+          video: result.video,
+        }));
       
-      if (combinedHTML) {
-        console.log('🟣 [PlayerMode] Setting feedbackHTML and stopping processing');
-        setFeedbackHTML(combinedHTML);
-        setIsProcessingVideo(false);
-      } else {
-        console.log('🟡 [PlayerMode] No combined HTML generated');
-      }
-    } else {
-      console.log('🟡 [PlayerMode] No results yet');
+      setHitResults(sortedResults);
+      console.log('🟣 [PlayerMode] Stored hit results:', sortedResults.map(r => r.hitIndex));
+      
+      // Stop processing when we have results
+      setIsProcessingVideo(false);
     }
   }, [results]);
 
@@ -197,10 +174,9 @@ export default function PlayerMode() {
         <div className="mb-4">
           <VideoFeedbackSection
             videoFileName={videoFile?.name || null}
-            feedbackHTML={feedbackHTML}
             isProcessing={isProcessingVideo}
             isConnected={isConnected}
-            videoData={videoData}
+            hitResults={hitResults}
           />
         </div>
 

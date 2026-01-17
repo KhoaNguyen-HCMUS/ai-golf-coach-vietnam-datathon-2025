@@ -4,37 +4,40 @@ import type React from "react"
 import { Video, Loader2, Download } from "lucide-react"
 import { useEffect } from "react"
 
-interface VideoFeedbackSectionProps {
-  videoFileName: string | null
-  feedbackHTML: string | null
-  isProcessing: boolean
-  isConnected?: boolean
-  videoData?: {
+interface HitResult {
+  hitIndex: number;
+  clipId: string;
+  analysisHTML?: string;
+  video?: {
     base64: string;
     mimeType: string;
     filename: string;
     size: number;
-  }[];
+  };
+}
+
+interface VideoFeedbackSectionProps {
+  videoFileName: string | null
+  isProcessing: boolean
+  isConnected?: boolean
+  hitResults: HitResult[];
 }
 
 export default function VideoFeedbackSection({
   videoFileName,
-  feedbackHTML,
   isProcessing,
   isConnected = true,
-  videoData = [],
+  hitResults = [],
 }: VideoFeedbackSectionProps) {
   // Debug logging
   useEffect(() => {
     console.log('🟠 [VideoFeedbackSection] Props changed:', {
       videoFileName,
-      hasFeedbackHTML: !!feedbackHTML,
-      feedbackHTMLLength: feedbackHTML?.length || 0,
+      hitResultsCount: hitResults.length,
       isProcessing,
       isConnected,
-      videoDataCount: videoData.length
     });
-  }, [videoFileName, feedbackHTML, isProcessing, isConnected, videoData]);
+  }, [videoFileName, hitResults, isProcessing, isConnected]);
 
   // Download video function
   const downloadVideo = (base64: string, filename: string, mimeType: string) => {
@@ -103,32 +106,24 @@ export default function VideoFeedbackSection({
               </div>
             )}
 
-            {/* Feedback from Server */}
-            {feedbackHTML && !isProcessing && (
-              <div className="space-y-4">
-                <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
-                  <div
-                    className="analysis-html"
-                    dangerouslySetInnerHTML={{ __html: feedbackHTML }}
-                    style={{
-                      color: '#1f2937',
-                      fontSize: '0.875rem',
-                      lineHeight: '1.6',
-                    }}
-                  />
-                </div>
-
-                {/* Video Players and Download Buttons */}
-                {videoData.length > 0 && (
-                  <div className="space-y-4">
-                    {videoData.map((video, index) => (
-                      <div key={index} className="p-4 bg-white border border-gray-200 rounded-xl">
+            {/* Render results in order: Video 1 -> Feedback 1 -> Video 2 -> Feedback 2 */}
+            {hitResults.length > 0 && !isProcessing && (
+              <div className="space-y-6">
+                {hitResults.map((result) => (
+                  <div key={result.clipId} className="space-y-4">
+                    {/* Video Player */}
+                    {result.video && (
+                      <div className="p-4 bg-white border border-gray-200 rounded-xl">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-semibold text-gray-900">
-                            Hit #{index + 1} Video
+                            Hit #{result.hitIndex} Video
                           </h4>
                           <button
-                            onClick={() => downloadVideo(video.base64, video.filename, video.mimeType)}
+                            onClick={() => downloadVideo(
+                              result.video!.base64,
+                              result.video!.filename,
+                              result.video!.mimeType
+                            )}
                             className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                           >
                             <Download className="h-4 w-4" />
@@ -141,23 +136,38 @@ export default function VideoFeedbackSection({
                           style={{ maxHeight: '400px' }}
                         >
                           <source
-                            src={`data:${video.mimeType};base64,${video.base64}`}
-                            type={video.mimeType}
+                            src={`data:${result.video.mimeType};base64,${result.video.base64}`}
+                            type={result.video.mimeType}
                           />
                           Your browser does not support the video tag.
                         </video>
                         <p className="text-xs text-gray-500 mt-2">
-                          Size: {(video.size / 1024 / 1024).toFixed(2)} MB
+                          Size: {(result.video.size / 1024 / 1024).toFixed(2)} MB
                         </p>
                       </div>
-                    ))}
+                    )}
+
+                    {/* Feedback HTML */}
+                    {result.analysisHTML && (
+                      <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                        <div
+                          className="analysis-html"
+                          dangerouslySetInnerHTML={{ __html: result.analysisHTML }}
+                          style={{
+                            color: '#1f2937',
+                            fontSize: '0.875rem',
+                            lineHeight: '1.6',
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             )}
 
             {/* Empty State - Waiting for feedback */}
-            {!feedbackHTML && !isProcessing && (
+            {hitResults.length === 0 && !isProcessing && (
               <div className="text-center py-8">
                 <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
                   <Video className="h-6 w-6 text-gray-400" />
