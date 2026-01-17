@@ -14,7 +14,13 @@ export default function PlayerMode() {
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [feedbackHTML, setFeedbackHTML] = useState<string | null>(null);
   const [pendingTimestamp, setPendingTimestamp] = useState<string | null>(null);
-
+  const [videoData, setVideoData] = useState<Array<{
+    base64: string;
+    mimeType: string;
+    filename: string;
+    size: number;
+  }>>([]);
+  
   // WebSocket connection
   const { isConnected, subscribe, results, error: wsError } = useGolfWebSocket();
   const [chatMessages, setChatMessages] = useState<Message[]>([
@@ -79,25 +85,53 @@ export default function PlayerMode() {
 
   // Handle WebSocket results
   useEffect(() => {
+    console.log('🟣 [PlayerMode] Results changed:', results.length);
+    console.log('🟣 [PlayerMode] Results data:', results);
+    
     if (results.length > 0) {
+      // Extract video data
+      const videos = results
+        .filter((result) => result && result.video)
+        .map((result) => result.video!);
+      setVideoData(videos);
+      console.log('🟣 [PlayerMode] Extracted video data:', videos.length, 'videos');
+
       // Combine all analysis HTML from multiple hits
       const combinedHTML = results
         .map((result, index) => {
-          if (result.analysisHTML) {
-            return `<div class="hit-analysis" data-hit-index="${result.hitIndex}">
+          console.log(`🟣 [PlayerMode] Processing result ${index}:`, {
+            clipId: result?.clipId,
+            hitIndex: result?.hitIndex,
+            hasAnalysisHTML: !!result?.analysisHTML,
+            analysisHTMLLength: result?.analysisHTML?.length || 0,
+            hasVideo: !!result?.video
+          });
+          
+          if (result && result.analysisHTML) {
+            const html = `<div class="hit-analysis" data-hit-index="${result.hitIndex}">
               ${results.length > 1 ? `<h4>Hit #${result.hitIndex}</h4>` : ''}
               ${result.analysisHTML}
             </div>`;
+            console.log(`🟣 [PlayerMode] Generated HTML for hit #${result.hitIndex}`);
+            return html;
           }
+          console.log(`🟡 [PlayerMode] Result ${index} has no analysisHTML`);
           return '';
         })
         .filter(Boolean)
         .join('<hr class="my-4" />');
 
+      console.log('🟣 [PlayerMode] Combined HTML length:', combinedHTML.length);
+      
       if (combinedHTML) {
+        console.log('🟣 [PlayerMode] Setting feedbackHTML and stopping processing');
         setFeedbackHTML(combinedHTML);
         setIsProcessingVideo(false);
+      } else {
+        console.log('🟡 [PlayerMode] No combined HTML generated');
       }
+    } else {
+      console.log('🟡 [PlayerMode] No results yet');
     }
   }, [results]);
 
@@ -166,6 +200,7 @@ export default function PlayerMode() {
             feedbackHTML={feedbackHTML}
             isProcessing={isProcessingVideo}
             isConnected={isConnected}
+            videoData={videoData}
           />
         </div>
 

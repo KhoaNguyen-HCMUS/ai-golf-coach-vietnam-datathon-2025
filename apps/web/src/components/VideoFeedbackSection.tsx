@@ -1,13 +1,20 @@
 "use client"
 
 import type React from "react"
-import { Video, Loader2 } from "lucide-react"
+import { Video, Loader2, Download } from "lucide-react"
+import { useEffect } from "react"
 
 interface VideoFeedbackSectionProps {
   videoFileName: string | null
   feedbackHTML: string | null
   isProcessing: boolean
   isConnected?: boolean
+  videoData?: {
+    base64: string;
+    mimeType: string;
+    filename: string;
+    size: number;
+  }[];
 }
 
 export default function VideoFeedbackSection({
@@ -15,7 +22,47 @@ export default function VideoFeedbackSection({
   feedbackHTML,
   isProcessing,
   isConnected = true,
+  videoData = [],
 }: VideoFeedbackSectionProps) {
+  // Debug logging
+  useEffect(() => {
+    console.log('🟠 [VideoFeedbackSection] Props changed:', {
+      videoFileName,
+      hasFeedbackHTML: !!feedbackHTML,
+      feedbackHTMLLength: feedbackHTML?.length || 0,
+      isProcessing,
+      isConnected,
+      videoDataCount: videoData.length
+    });
+  }, [videoFileName, feedbackHTML, isProcessing, isConnected, videoData]);
+
+  // Download video function
+  const downloadVideo = (base64: string, filename: string, mimeType: string) => {
+    try {
+      // Convert base64 to blob
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      console.log(`✓ Downloaded video: ${filename}`);
+    } catch (error) {
+      console.error('✗ Failed to download video:', error);
+    }
+  };
   return (
     <div className="rounded-2xl border border-gray-300/50 bg-gradient-to-b from-white to-gray-50 shadow-lg overflow-hidden">
       {/* Header */}
@@ -58,16 +105,54 @@ export default function VideoFeedbackSection({
 
             {/* Feedback from Server */}
             {feedbackHTML && !isProcessing && (
-              <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
-                <div
-                  className="analysis-html"
-                  dangerouslySetInnerHTML={{ __html: feedbackHTML }}
-                  style={{
-                    color: '#1f2937',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.6',
-                  }}
-                />
+              <div className="space-y-4">
+                <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div
+                    className="analysis-html"
+                    dangerouslySetInnerHTML={{ __html: feedbackHTML }}
+                    style={{
+                      color: '#1f2937',
+                      fontSize: '0.875rem',
+                      lineHeight: '1.6',
+                    }}
+                  />
+                </div>
+
+                {/* Video Players and Download Buttons */}
+                {videoData.length > 0 && (
+                  <div className="space-y-4">
+                    {videoData.map((video, index) => (
+                      <div key={index} className="p-4 bg-white border border-gray-200 rounded-xl">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">
+                            Hit #{index + 1} Video
+                          </h4>
+                          <button
+                            onClick={() => downloadVideo(video.base64, video.filename, video.mimeType)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download
+                          </button>
+                        </div>
+                        <video
+                          controls
+                          className="w-full rounded-lg"
+                          style={{ maxHeight: '400px' }}
+                        >
+                          <source
+                            src={`data:${video.mimeType};base64,${video.base64}`}
+                            type={video.mimeType}
+                          />
+                          Your browser does not support the video tag.
+                        </video>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Size: {(video.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
