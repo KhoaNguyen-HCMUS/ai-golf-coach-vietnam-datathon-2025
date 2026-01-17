@@ -1,21 +1,75 @@
 "use client"
 
 import type React from "react"
-import { Video, Loader2 } from "lucide-react"
+import { Video, Loader2, Download, MessageCircle } from "lucide-react"
+import { useEffect } from "react"
+
+interface HitResult {
+  hitIndex: number;
+  clipId: string;
+  analysisHTML?: string;
+  video?: {
+    base64: string;
+    mimeType: string;
+    filename: string;
+    size: number;
+  };
+}
 
 interface VideoFeedbackSectionProps {
   videoFileName: string | null
-  feedbackHTML: string | null
   isProcessing: boolean
   isConnected?: boolean
+  hitResults: HitResult[];
+  uploadAnalysisHTML?: string | null;
+  onConsult?: (analysisHTML: string) => void;
 }
 
 export default function VideoFeedbackSection({
   videoFileName,
-  feedbackHTML,
   isProcessing,
   isConnected = true,
+  hitResults = [],
+  uploadAnalysisHTML = null,
+  onConsult,
 }: VideoFeedbackSectionProps) {
+  // Debug logging
+  useEffect(() => {
+    console.log('🟠 [VideoFeedbackSection] Props changed:', {
+      videoFileName,
+      hitResultsCount: hitResults.length,
+      isProcessing,
+      isConnected,
+    });
+  }, [videoFileName, hitResults, isProcessing, isConnected]);
+
+  // Download video function
+  const downloadVideo = (base64: string, filename: string, mimeType: string) => {
+    try {
+      // Convert base64 to blob
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      console.log(`✓ Downloaded video: ${filename}`);
+    } catch (error) {
+      console.error('✗ Failed to download video:', error);
+    }
+  };
   return (
     <div className="rounded-2xl border border-gray-300/50 bg-gradient-to-b from-white to-gray-50 shadow-lg overflow-hidden">
       {/* Header */}
@@ -56,12 +110,24 @@ export default function VideoFeedbackSection({
               </div>
             )}
 
-            {/* Feedback from Server */}
-            {feedbackHTML && !isProcessing && (
+            {/* Upload file analysis (no WebSocket) */}
+            {uploadAnalysisHTML && !isProcessing && (
               <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-900">Analysis Results</h4>
+                  {onConsult && (
+                    <button
+                      onClick={() => onConsult(uploadAnalysisHTML)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all shadow-sm hover:shadow-md"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Consult
+                    </button>
+                  )}
+                </div>
                 <div
                   className="analysis-html"
-                  dangerouslySetInnerHTML={{ __html: feedbackHTML }}
+                  dangerouslySetInnerHTML={{ __html: uploadAnalysisHTML }}
                   style={{
                     color: '#1f2937',
                     fontSize: '0.875rem',
@@ -71,8 +137,80 @@ export default function VideoFeedbackSection({
               </div>
             )}
 
+            {/* Render results in order: Video 1 -> Feedback 1 -> Video 2 -> Feedback 2 (WebSocket mode) */}
+            {hitResults.length > 0 && !isProcessing && (
+              <div className="space-y-6">
+                {hitResults.map((result) => (
+                  <div key={result.clipId} className="space-y-4">
+                    {/* Video Player */}
+                    {result.video && (
+                      <div className="p-4 bg-white border border-gray-200 rounded-xl">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">
+                            Hit #{result.hitIndex} Video
+                          </h4>
+                          <button
+                            onClick={() => downloadVideo(
+                              result.video!.base64,
+                              result.video!.filename,
+                              result.video!.mimeType
+                            )}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download
+                          </button>
+                        </div>
+                        <video
+                          controls
+                          className="w-full rounded-lg"
+                          style={{ maxHeight: '400px' }}
+                        >
+                          <source
+                            src={`data:${result.video.mimeType};base64,${result.video.base64}`}
+                            type={result.video.mimeType}
+                          />
+                          Your browser does not support the video tag.
+                        </video>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Size: {(result.video.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Feedback HTML */}
+                    {result.analysisHTML && (
+                      <div className="p-4 sm:p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">Hit #{result.hitIndex} Analysis</h4>
+                          {onConsult && (
+                            <button
+                              onClick={() => onConsult(result.analysisHTML!)}
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all shadow-sm hover:shadow-md"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              Consult
+                            </button>
+                          )}
+                        </div>
+                        <div
+                          className="analysis-html"
+                          dangerouslySetInnerHTML={{ __html: result.analysisHTML }}
+                          style={{
+                            color: '#1f2937',
+                            fontSize: '0.875rem',
+                            lineHeight: '1.6',
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Empty State - Waiting for feedback */}
-            {!feedbackHTML && !isProcessing && (
+            {hitResults.length === 0 && !uploadAnalysisHTML && !isProcessing && (
               <div className="text-center py-8">
                 <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
                   <Video className="h-6 w-6 text-gray-400" />
