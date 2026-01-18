@@ -1,7 +1,13 @@
 """
 Golf Swing Prediction - Single Video Mode
 Input: 1 video file
-Output: Score + JSON với insights tiếng Việt
+Output: Score + JSON with hybrid insights (overall + phase-based critical issues)
+
+Features:
+- 39 biomechanical features extracted from skeleton
+- Phase detection (Address, Top, Impact, Finish)
+- Overall insights (top 3 strengths/weaknesses)
+- Phase-based critical issues (1-2 per phase)
 """
 
 import numpy as np
@@ -131,6 +137,86 @@ class GolfSwingPredictor:
             insights['weaknesses'].append(text)
         
         return insights
+    
+    def generate_phase_critical_issues(self, feature_values):
+        """Generate critical issues organized by swing phase (hybrid approach)."""
+        if not self.stats:
+            return {}
+        
+        # Map features to phases
+        phase_features = {
+            "Setup (Address)": [
+                "bio_upper_tilt", "bio_stance_ratio", "stab_overall"
+            ],
+            "Backswing (Address → Top)": [
+                "timing_backswing_frames", "bio_hip_rotation", "bio_shoulder_angle_top",
+                "bio_left_arm_angle_top", "bio_right_arm_angle_top", "bio_right_armpit_angle",
+                "geo_has_chicken_wing", "stab_head_std"
+            ],
+            "Downswing (Top → Impact)": [
+                "timing_downswing_frames", "kin_peak_velocity", "kin_impact_velocity",
+                "bio_weight_shift", "bio_hip_shifted", "bio_left_arm_angle_impact",
+                "bio_right_arm_angle_impact", "bio_right_leg_angle_impact",
+                "geo_has_soft_lead_leg", "stab_hip_sway"
+            ],
+            "Follow-Through (Impact → Finish)": [
+                "timing_followthrough_frames", "bio_shoulder_hanging_back", 
+                "bio_hip_hanging_back", "bio_finish_angle", "bio_shoulder_loc"
+            ]
+        }
+        
+        phase_issues = {}
+        
+        for phase, feature_names in phase_features.items():
+            issues = []
+            
+            for fname in feature_names:
+                if fname not in feature_values or fname not in self.stats:
+                    continue
+                
+                value = feature_values[fname]
+                band_stat = self.stats[fname].get("band_4")
+                if not band_stat or band_stat.get('count', 0) < 5:
+                    continue
+                
+                target_mean = band_stat['mean']
+                target_std = band_stat['std']
+                importance = self.feature_importances.get(fname, 0.5)
+                z_score = (value - target_mean) / (target_std + 1e-6)
+                
+                # Only flag significant deviations (|z| > 1.5) with reasonable importance
+                if abs(z_score) > 1.5 and importance > 0.01:
+                    # Determine if this is actually an issue based on feature type
+                    is_issue = False
+                    higher_is_better = not ('hanging' in fname or 'sway' in fname or 
+                                           'error' in fname or 'violation' in fname or
+                                           'penalty' in fname or 'has_' in fname)
+                    
+                    if higher_is_better and z_score < -1.5:
+                        is_issue = True
+                    elif not higher_is_better and z_score > 1.5:
+                        is_issue = True
+                    
+                    if is_issue:
+                        info = get_feature_info(fname)
+                        severity_score = abs(z_score) * importance
+                        
+                        issues.append({
+                            'feature': fname.replace('_', ' ').title(),
+                            'value': float(value),
+                            'pro_avg': float(target_mean),
+                            'unit': info['unit'],
+                            'severity': severity_score,
+                            'description': info.get('description', '')
+                        })
+            
+            # Sort by severity and take top 1-2 issues
+            issues.sort(key=lambda x: x['severity'], reverse=True)
+            
+            if issues:
+                phase_issues[phase] = issues[:2]  # Max 2 critical issues per phase
+        
+        return phase_issues
 
 
 def extract_skeleton_from_video(video_path, output_path):
@@ -244,6 +330,9 @@ def predict_video(video_path, model_dir=None, output_json=None):
         # Generate insights
         insights = predictor.generate_feature_insights(feature_values)
         
+        # Generate phase-based critical issues (hybrid approach)
+        phase_critical_issues = predictor.generate_phase_critical_issues(feature_values)
+        
         # Build result
         # Add evaluation for each feature
         feature_list = []
@@ -312,6 +401,7 @@ def predict_video(video_path, model_dir=None, output_json=None):
                     }
                 },
                 "insights": insights,
+                "phase_critical_issues": phase_critical_issues,
                 "features": feature_list
             }
         }
@@ -365,6 +455,17 @@ if __name__ == "__main__":
             print("\nAreas for Improvement:")
             for w in insights['weaknesses']:
                 print(f"  - {w}")
+        
+        # Print phase-based critical issues
+        phase_issues = result['json_output'].get('phase_critical_issues', {})
+        if phase_issues:
+            print("\n" + "="*70)
+            print("  CRITICAL ISSUES BY PHASE")
+            print("="*70)
+            for phase, issues in phase_issues.items():
+                print(f"\n📍 {phase}:")
+                for issue in issues:
+                    print(f"   ⚠️  {issue['feature']}: {issue['value']:.1f}{issue['unit']} (pro avg: {issue['pro_avg']:.1f})")
         
         if not args.output:
             print(f"\n(Use --output to save JSON)")
